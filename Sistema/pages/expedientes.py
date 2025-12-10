@@ -140,7 +140,7 @@ class ExpedientesPage:
         FROM historial_medico hm
         LEFT JOIN usuarios u ON hm.realizado_por = u.id
         WHERE paciente_id = %s
-        ORDER BY fecha DESC, created_at DESC
+        ORDER BY hm.fecha DESC, hm.created_at DESC
         """
         
         historial = db.fetch_all(query, (self.paciente_id,))

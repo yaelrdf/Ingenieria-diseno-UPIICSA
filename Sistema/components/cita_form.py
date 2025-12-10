@@ -34,8 +34,12 @@ class CitaForm:
                     fecha_default = self.cita.fecha_hora.date() if self.cita.fecha_hora else date.today()
                     hora_default = self.cita.fecha_hora.time() if self.cita.fecha_hora else datetime.now().time()
                     
-                    self.input_fecha = ui.date(value=fecha_default, label='Fecha').props('outlined').classes('w-1/2')
-                    self.input_hora = ui.time('Hora', value=hora_default).props('outlined').classes('w-1/2')
+                    with ui.column().classes('w-1/2'):
+                        ui.label('Fecha')
+                        self.input_fecha = ui.date(value=fecha_default).props('outlined').classes('w-full')
+                    with ui.column().classes('w-1/2'):
+                        ui.label('Hora')
+                        self.input_hora = ui.time(value=hora_default).props('outlined').classes('w-full')
                 
                 # Tipo de cita
                 self.select_tipo = ui.select(

@@ -21,7 +21,9 @@ class PacienteForm:
                 self.apellidos = ui.input('Apellidos', value=self.paciente.apellidos).props('outlined').classes('w-1/2')
             
             with ui.row().classes('w-full'):
-                self.fecha_nacimiento = ui.date(value=self.paciente.fecha_nacimiento, label='Fecha de Nacimiento').props('outlined').classes('w-1/2')
+                with ui.column().classes('w-1/2'):
+                    ui.label('Fecha de Nacimiento')
+                    self.fecha_nacimiento = ui.date(value=self.paciente.fecha_nacimiento).props('outlined').classes('w-full')
                 self.edad = ui.number('Edad', value=self.paciente.edad, format='%.0f').props('outlined').classes('w-1/2')
             
             with ui.row().classes('w-full'):

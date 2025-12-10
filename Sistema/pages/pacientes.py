@@ -6,6 +6,7 @@ class PacientesPage:
     def __init__(self):
         self.search_query = ""
         self.pacientes = []
+        self.pacientes_container = None
         self.create_content()
     
     def create_content(self):
@@ -18,18 +19,8 @@ class PacientesPage:
             ui.button('Nuevo Paciente', on_click=self.mostrar_form_nuevo, 
                      icon='person_add').props('flat color=primary')
         
-        self.pacientes_table = ui.table(
-            columns=[
-                {'name': 'id', 'label': 'ID', 'field': 'id'},
-                {'name': 'nombre', 'label': 'Nombre', 'field': 'nombre'},
-                {'name': 'curp', 'label': 'CURP', 'field': 'curp'},
-                {'name': 'telefono', 'label': 'Teléfono', 'field': 'telefono'},
-                {'name': 'email', 'label': 'Email', 'field': 'email'},
-                {'name': 'acciones', 'label': 'Acciones', 'field': 'acciones'}
-            ],
-            rows=[],
-            row_key='id'
-        ).classes('w-full')
+        # Container para las tarjetas
+        self.pacientes_container = ui.column().classes('w-full gap-3')
         
         self.cargar_pacientes()
     
@@ -47,24 +38,45 @@ class PacientesPage:
             sql = "SELECT id, nombre || ' ' || apellidos as nombre, curp, telefono, email FROM pacientes ORDER BY nombre"
             resultados = db.fetch_all(sql)
         
-        rows = []
-        for paciente in resultados:
-            rows.append({
-                'id': paciente[0],
-                'nombre': paciente[1],
-                'curp': paciente[2],
-                'telefono': paciente[3],
-                'email': paciente[4],
-                'acciones': self.crear_botones_accion(paciente[0])
-            })
+        # Limpiar el contenedor
+        self.pacientes_container.clear()
         
-        self.pacientes_table.rows = rows
+        if not resultados:
+            with self.pacientes_container:
+                ui.label('No hay pacientes registrados').classes('text-subtitle2 italic text-gray-500')
+            return
+        
+        # Crear tarjetas para cada paciente
+        with self.pacientes_container:
+            for paciente in resultados:
+                self.crear_tarjeta_paciente(paciente[0], paciente[1], paciente[2], paciente[3], paciente[4])
     
-    def crear_botones_accion(self, paciente_id):
-        with ui.row().classes('gap-1'):
-            ui.button(icon='edit', on_click=lambda id=paciente_id: self.editar_paciente(id)).props('flat dense')
-            ui.button(icon='delete', on_click=lambda id=paciente_id: self.eliminar_paciente(id)).props('flat dense color=red')
-            ui.button(icon='visibility', on_click=lambda id=paciente_id: self.ver_expediente(id)).props('flat dense color=green')
+    def crear_tarjeta_paciente(self, paciente_id, nombre, curp, telefono, email):
+        with ui.card().classes('w-full'):
+            with ui.row().classes('w-full items-start'):
+                # Información del paciente
+                with ui.column().classes('flex-grow'):
+                    ui.label(nombre).classes('text-h6 font-bold')
+                    
+                    with ui.row().classes('gap-8'):
+                        with ui.column().classes('gap-1'):
+                            ui.label('CURP').classes('text-caption text-gray-600')
+                            ui.label(curp).classes('text-body2 font-mono')
+                        
+                        with ui.column().classes('gap-1'):
+                            ui.label('Teléfono').classes('text-caption text-gray-600')
+                            ui.label(telefono).classes('text-body2')
+                        
+                        with ui.column().classes('gap-1'):
+                            ui.label('Email').classes('text-caption text-gray-600')
+                            ui.label(email).classes('text-body2 break-all')
+                
+                # Botones de acción
+                with ui.column().classes('items-end gap-2'):
+                    with ui.row().classes('gap-2'):
+                        ui.button(icon='edit', on_click=lambda id=paciente_id: self.editar_paciente(id)).props('flat')
+                        ui.button(icon='visibility', on_click=lambda id=paciente_id: self.ver_expediente(id)).props('flat color=blue')
+                    ui.button(icon='delete', on_click=lambda id=paciente_id: self.eliminar_paciente(id)).props('flat color=red')
     
     def buscar_pacientes(self):
         query = self.search_input.value
