@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:latest # You can specify a specific version like postgres:14-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: sistema_dental
+    ports:
+      - "5432:5432" # Maps host port 5432 to container port 5432
+    volumes:
+      - db_data:/var/lib/postgresql 
+
+volumes:
+  db_data:

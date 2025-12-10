@@ -1,0 +1,26 @@
+sistema_dental/
+├── main.py
+├── database.py
+├── config.py
+├── requirements.txt
+├── create_database.sql
+├── models/
+│   ├── __init__.py
+│   ├── paciente.py
+│   ├── cita.py
+│   ├── procedimiento.py
+│   └── pago.py
+├── pages/
+│   ├── __init__.py
+│   ├── dashboard.py
+│   ├── pacientes.py
+│   ├── citas.py
+│   ├── expedientes.py
+│   ├── adeudos.py
+│   └── odontograma.py
+└── components/
+    ├── __init__.py
+    ├── paciente_form.py
+    ├── cita_form.py
+    ├── pago_form.py
+    └── odontograma_view.py
