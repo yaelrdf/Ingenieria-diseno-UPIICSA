@@ -28,7 +28,8 @@ class PacienteForm:
             
             with ui.row().classes('w-full'):
                 self.genero = ui.select(['Masculino', 'Femenino', 'Otro'], 
-                                      value=self.paciente.genero, label='Género').props('outlined').classes('w-1/2')
+                                      value=self.paciente.genero if self.paciente.genero in ['Masculino', 'Femenino', 'Otro'] else None, 
+                                      label='Género').props('outlined clearable').classes('w-1/2')
                 self.telefono = ui.input('Teléfono', value=self.paciente.telefono).props('outlined').classes('w-1/2')
             
             self.email = ui.input('Email', value=self.paciente.email).props('outlined').classes('w-full')
@@ -45,13 +46,26 @@ class PacienteForm:
                 ui.button('Guardar', on_click=self.save, icon='save').props('flat color=primary')
     
     def save(self):
+        if not self.curp.value or not self.nombre.value or not self.apellidos.value or not self.fecha_nacimiento.value:
+            ui.notify('Por favor complete los campos obligatorios: CURP, Nombre, Apellidos y Fecha de Nacimiento', type='warning')
+            return
+            
+        try:
+            fecha_val = self.fecha_nacimiento.value
+            if isinstance(fecha_val, str):
+                fecha_nac = date.fromisoformat(fecha_val) if fecha_val else None
+            else:
+                fecha_nac = fecha_val
+        except (ValueError, TypeError):
+            fecha_nac = None
+            
         paciente = Paciente(
             id=self.paciente.id,
             curp=self.curp.value,
             nombre=self.nombre.value,
             apellidos=self.apellidos.value,
-            fecha_nacimiento=self.fecha_nacimiento.value,
-            edad=int(self.edad.value) if self.edad.value else None,
+            fecha_nacimiento=fecha_nac,
+            edad=int(self.edad.value) if self.edad.value is not None else None,
             genero=self.genero.value,
             telefono=self.telefono.value,
             email=self.email.value,

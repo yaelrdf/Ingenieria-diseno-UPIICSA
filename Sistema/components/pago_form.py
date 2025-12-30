@@ -41,18 +41,19 @@ class PagoForm:
                 # Método de pago
                 self.select_metodo = ui.select(
                     label='Método de Pago',
-                    options=[
-                        ('efectivo', 'Efectivo'),
-                        ('tarjeta_credito', 'Tarjeta de Crédito'),
-                        ('tarjeta_debito', 'Tarjeta de Débito'),
-                        ('transferencia', 'Transferencia'),
-                        ('cheque', 'Cheque')
-                    ],
+                    options={
+                        'efectivo': 'Efectivo',
+                        'tarjeta_credito': 'Tarjeta de Crédito',
+                        'tarjeta_debito': 'Tarjeta de Débito',
+                        'transferencia': 'Transferencia',
+                        'cheque': 'Cheque'
+                    },
                     value='efectivo'
                 ).props('outlined').classes('w-full')
                 
                 # Fecha de pago
-                self.input_fecha = ui.date(value=date.today(), label='Fecha de Pago').props('outlined').classes('w-full')
+                ui.label('Fecha de Pago')
+                self.input_fecha = ui.date(value=date.today()).props('outlined').classes('w-full')
                 
                 # Concepto
                 self.input_concepto = ui.input(
@@ -80,12 +81,21 @@ class PagoForm:
             ui.notify('Ingrese un monto válido', type='warning')
             return
         
+        fecha_val = self.input_fecha.value
+        try:
+            if isinstance(fecha_val, str):
+                fecha_pago = date.fromisoformat(fecha_val) if fecha_val else date.today()
+            else:
+                fecha_pago = fecha_val or date.today()
+        except (ValueError, TypeError):
+            fecha_pago = date.today()
+            
         pago = Pago(
             procedimiento_id=self.select_procedimiento.value,
             monto=float(monto),
             metodo_pago=self.select_metodo.value,
-            fecha_pago=self.input_fecha.value,
-            concepto=self.input_concepto.value or f"Pago - {date.today().strftime('%d/%m/%Y')}",
+            fecha_pago=fecha_pago,
+            concepto=self.input_concepto.value or f"Pago - {fecha_pago.strftime('%d/%m/%Y')}",
             notas=self.textarea_notas.value
         )
         

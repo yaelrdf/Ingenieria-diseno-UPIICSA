@@ -2,6 +2,7 @@ from nicegui import ui
 import database as db
 from models.paciente import Paciente
 from models.procedimiento import ProcedimientoPaciente
+from components.paciente_selector import PacienteSelector
 
 class ExpedientesPage:
     def __init__(self, paciente_id=None):
@@ -11,30 +12,40 @@ class ExpedientesPage:
         # If a paciente_id was provided (via query param), pre-select and load
         if self.paciente_id:
             try:
-                self.select_paciente.value = int(self.paciente_id)
+                self.paciente_id = int(self.paciente_id)
+                self.cargar_nombre_paciente()
             except Exception:
-                self.select_paciente.value = self.paciente_id
+                pass
             self.cargar_expediente()
     
+    def cargar_nombre_paciente(self):
+        sql = "SELECT nombre || ' ' || apellidos FROM pacientes WHERE id = %s"
+        res = db.fetch_one(sql, (self.paciente_id,))
+        if res:
+            self.paciente_nombre = res[0]
+            self.label_paciente.set_text(self.paciente_nombre)
+            self.paciente_display.set_visibility(True)
+
     def create_content(self):
         ui.label('Expedientes Clínicos').classes('text-h4 mb-4')
         
         # Selector de paciente
-        with ui.row().classes('w-full items-center mb-4'):
-            self.select_paciente = ui.select(
-                label='Seleccionar paciente',
-                options={},
-                on_change=self.cargar_expediente
-            ).props('outlined').classes('w-96')
-            self.cargar_pacientes_select()
+        with ui.row().classes('w-full items-center mb-4 gap-4'):
+            ui.button('Seleccionar Paciente', icon='person_search', on_click=self.abrir_selector).props('outline color=primary')
+            
+            self.paciente_display = ui.row().classes('items-center gap-2 bg-blue-50 p-2 rounded')
+            with self.paciente_display:
+                ui.icon('person', color='primary')
+                self.label_paciente = ui.label('Seleccione un paciente').classes('font-bold')
+            
+            self.paciente_display.set_visibility(self.paciente_id is not None)
         
         # Pestañas para diferentes secciones del expediente
-        # use simple internal names for tabs (no spaces) and labels for display
-        self.tabs = ui.tabs(value='info').classes('w-full')
-        ui.tab('info', 'Información General')
-        ui.tab('historial', 'Historial Médico')
-        ui.tab('procedimientos', 'Procedimientos Realizados')
-        ui.tab('observaciones', 'Notas y Observaciones')
+        with ui.tabs(value='info').classes('w-full') as self.tabs:
+            ui.tab('info', 'Información General')
+            ui.tab('historial', 'Historial Médico')
+            ui.tab('procedimientos', 'Procedimientos Realizados')
+            ui.tab('observaciones', 'Notas y Observaciones')
 
         self.tab_panels = ui.tab_panels(self.tabs, value='info').classes('w-full')
 
@@ -54,14 +65,16 @@ class ExpedientesPage:
         # Inicialmente vacío
         self.mostrar_vacio()
     
-    def cargar_pacientes_select(self):
-        query = "SELECT id, nombre || ' ' || apellidos as nombre FROM pacientes ORDER BY nombre"
-        pacientes = db.fetch_all(query)
-        options = {None: 'Seleccione un paciente'}
-        for p in pacientes:
-            options[p[0]] = p[1]
-        self.select_paciente.options = options
-    
+    def abrir_selector(self):
+        PacienteSelector(on_select=self.seleccionar_paciente).open()
+        
+    def seleccionar_paciente(self, pid, name):
+        self.paciente_id = pid
+        self.paciente_nombre = name
+        self.label_paciente.set_text(name)
+        self.paciente_display.set_visibility(True)
+        self.cargar_expediente()
+
     def mostrar_vacio(self):
         self.info_general.clear()
         self.historial_medico.clear()
@@ -72,13 +85,11 @@ class ExpedientesPage:
             ui.label('Seleccione un paciente para ver su expediente').classes('text-italic')
     
     def cargar_expediente(self):
-        self.paciente_id = self.select_paciente.value
-        
         if not self.paciente_id:
             self.mostrar_vacio()
             return
         
-        # Cargar información del paciente
+        # Cargar información del expediente
         self.cargar_info_general()
         self.cargar_historial_medico()
         self.cargar_procedimientos()

@@ -113,8 +113,58 @@ class PacientesPage:
         dialog.open()
     
     def editar_paciente(self, paciente_id):
-        # Implementar edición similar al formulario nuevo
-        pass
+        sql = "SELECT id, curp, nombre, apellidos, fecha_nacimiento, edad, genero, telefono, email, direccion, alergias, enfermedades_cronicas, medicamentos, observaciones FROM pacientes WHERE id = %s"
+        paciente_data = db.fetch_one(sql, (paciente_id,))
+        
+        if not paciente_data:
+            ui.notify('Paciente no encontrado', type='warning')
+            return
+        
+        from models.paciente import Paciente
+        paciente = Paciente(
+            id=paciente_data[0],
+            curp=paciente_data[1],
+            nombre=paciente_data[2],
+            apellidos=paciente_data[3],
+            fecha_nacimiento=paciente_data[4],
+            edad=paciente_data[5],
+            genero=paciente_data[6],
+            telefono=paciente_data[7],
+            email=paciente_data[8],
+            direccion=paciente_data[9],
+            alergias=paciente_data[10],
+            enfermedades_cronicas=paciente_data[11],
+            medicamentos=paciente_data[12],
+            observaciones=paciente_data[13]
+        )
+
+        def actualizar_paciente(p):
+            sql = """
+            UPDATE pacientes SET 
+                curp=%s, nombre=%s, apellidos=%s, fecha_nacimiento=%s, 
+                edad=%s, genero=%s, telefono=%s, email=%s, direccion=%s, 
+                alergias=%s, enfermedades_cronicas=%s, medicamentos=%s, observaciones=%s,
+                updated_at=CURRENT_TIMESTAMP
+            WHERE id=%s
+            """
+            params = (
+                p.curp, p.nombre, p.apellidos, p.fecha_nacimiento,
+                p.edad, p.genero, p.telefono, p.email, p.direccion,
+                p.alergias, p.enfermedades_cronicas, p.medicamentos, p.observaciones,
+                p.id
+            )
+            try:
+                db.execute_query(sql, params)
+                ui.notify('Paciente actualizado exitosamente', type='positive')
+                self.cargar_pacientes()
+                dialog.close()
+            except Exception as e:
+                ui.notify(f'Error al actualizar: {str(e)}', type='negative')
+
+        dialog = ui.dialog()
+        with dialog:
+            PacienteForm(paciente=paciente, on_save=actualizar_paciente, on_cancel=dialog.close)
+        dialog.open()
     
     def eliminar_paciente(self, paciente_id):
         def confirmar_eliminacion():

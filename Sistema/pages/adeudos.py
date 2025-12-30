@@ -2,6 +2,7 @@ from nicegui import ui
 import database as db
 from models.pago import Pago
 from components.pago_form import PagoForm
+from components.paciente_selector import PacienteSelector
 
 class AdeudosPage:
     def __init__(self):
@@ -15,13 +16,15 @@ class AdeudosPage:
         ui.label('Gestión de Adeudos y Pagos').classes('text-h4 mb-4')
         
         # Selector de paciente
-        with ui.row().classes('w-full items-center mb-4'):
-            self.select_paciente = ui.select(
-                label='Seleccionar paciente',
-                options={},
-                on_change=self.cargar_adeudos
-            ).props('outlined').classes('w-96')
-            self.cargar_pacientes_select()
+        with ui.row().classes('w-full items-center mb-4 gap-4'):
+            ui.button('Seleccionar Paciente', icon='person_search', on_click=self.abrir_selector).props('outline color=primary')
+            
+            self.paciente_display = ui.row().classes('items-center gap-2 bg-blue-50 p-2 rounded')
+            with self.paciente_display:
+                ui.icon('person', color='primary')
+                self.label_paciente = ui.label('Seleccione un paciente').classes('font-bold')
+            
+            self.paciente_display.set_visibility(self.paciente_id is not None)
         
         # Resumen financiero
         with ui.card().classes('w-full mb-4'):
@@ -66,6 +69,14 @@ class AdeudosPage:
             row_key='id'
         ).classes('w-full')
         
+        self.procedimientos_table.add_slot('body-cell-estado', '''
+            <q-td :props="props">
+                <q-badge :color="props.value === 'pagado' ? 'green' : 'orange'">
+                    {{ props.value }}
+                </q-badge>
+            </q-td>
+        ''')
+        
         # Tabla de movimientos de pagos
         ui.label('Historial de Pagos').classes('text-h6 mt-4')
         columns_pagos = [
@@ -86,24 +97,15 @@ class AdeudosPage:
         # Inicialmente vacío
         self.mostrar_vacio()
     
-    def cargar_pacientes_select(self):
-        query = """
-        SELECT p.id, p.nombre || ' ' || p.apellidos as nombre,
-               COALESCE(SUM(pp.costo) - COALESCE(SUM(pg.monto), 0), 0) as adeudo
-        FROM pacientes p
-        LEFT JOIN procedimientos_paciente pp ON p.id = pp.paciente_id AND pp.estado = 'completado'
-        LEFT JOIN pagos pg ON pp.id = pg.procedimiento_id
-        GROUP BY p.id, p.nombre, p.apellidos
-        HAVING COALESCE(SUM(pp.costo) - COALESCE(SUM(pg.monto), 0), 0) > 0
-        ORDER BY adeudo DESC
-        """
+    def abrir_selector(self):
+        PacienteSelector(on_select=self.seleccionar_paciente).open()
         
-        pacientes = db.fetch_all(query)
-        options = {None: 'Seleccione un paciente'}
-        for p in pacientes:
-            options[p[0]] = f"{p[1]} (Adeudo: ${p[2]:,.2f})"
-        self.select_paciente.options = options
-    
+    def seleccionar_paciente(self, pid, name):
+        self.paciente_id = pid
+        self.label_paciente.set_text(name)
+        self.paciente_display.set_visibility(True)
+        self.cargar_adeudos()
+
     def mostrar_vacio(self):
         self.label_total.set_text('$0.00')
         self.label_pagado.set_text('$0.00')
@@ -112,8 +114,6 @@ class AdeudosPage:
         self.pagos_table.rows = []
     
     def cargar_adeudos(self):
-        self.paciente_id = self.select_paciente.value
-        
         if not self.paciente_id:
             self.mostrar_vacio()
             return
@@ -166,9 +166,6 @@ class AdeudosPage:
         
         rows = []
         for proc in procedimientos:
-            estado_color = 'green' if proc[6] == 'pagado' else 'orange'
-            estado_badge = f"<span style='color: {estado_color}'>{proc[6].title()}</span>"
-            
             rows.append({
                 'id': proc[0],
                 'procedimiento': proc[1],
@@ -176,7 +173,7 @@ class AdeudosPage:
                 'costo': f"${proc[3]:,.2f}",
                 'pagado': f"${proc[4]:,.2f}",
                 'pendiente': f"${proc[5]:,.2f}",
-                'estado': estado_badge
+                'estado': proc[6]
             })
         
         self.procedimientos_table.rows = rows

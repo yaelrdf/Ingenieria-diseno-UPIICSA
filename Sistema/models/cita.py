@@ -13,5 +13,6 @@ class Cita:
     estado: str = "programada"
     notas: str = ""
     duracion_minutos: int = 30
+    costo: float = 0.0
     paciente_nombre: str = ""
     doctor_nombre: str = ""
