@@ -125,20 +125,18 @@ class AdeudosPage:
     def cargar_resumen_financiero(self):
         query = """
         SELECT 
-            COALESCE(SUM(pp.costo), 0) as total_adeudo,
-            COALESCE(SUM(pg.monto), 0) as total_pagado,
-            COALESCE(SUM(pp.costo), 0) - COALESCE(SUM(pg.monto), 0) as saldo_pendiente
-        FROM procedimientos_paciente pp
-        LEFT JOIN pagos pg ON pp.id = pg.procedimiento_id
-        WHERE pp.paciente_id = %s AND pp.estado = 'completado'
+            (SELECT COALESCE(SUM(costo), 0) FROM procedimientos_paciente 
+             WHERE paciente_id = %s AND estado IN ('completado', 'en_proceso')) as total_adeudo,
+            (SELECT COALESCE(SUM(monto), 0) FROM pagos 
+             WHERE paciente_id = %s) as total_pagado
         """
         
-        result = db.fetch_one(query, (self.paciente_id,))
+        result = db.fetch_one(query, (self.paciente_id, self.paciente_id))
         
         if result:
             self.total_adeudo = float(result[0] or 0)
             self.total_pagado = float(result[1] or 0)
-            self.saldo_pendiente = float(result[2] or 0)
+            self.saldo_pendiente = self.total_adeudo - self.total_pagado
             
             self.label_total.set_text(f"${self.total_adeudo:,.2f}")
             self.label_pagado.set_text(f"${self.total_pagado:,.2f}")
@@ -156,7 +154,7 @@ class AdeudosPage:
         FROM procedimientos_paciente pp
         LEFT JOIN procedimientos pr ON pp.procedimiento_id = pr.id
         LEFT JOIN pagos pg ON pp.id = pg.procedimiento_id
-        WHERE pp.paciente_id = %s AND pp.estado = 'completado'
+        WHERE pp.paciente_id = %s AND pp.estado IN ('completado', 'en_proceso')
         GROUP BY pp.id, pr.nombre, pp.fecha_realizacion, pp.costo
         HAVING pp.costo - COALESCE(SUM(pg.monto), 0) > 0
         ORDER BY pp.fecha_realizacion DESC
@@ -182,8 +180,7 @@ class AdeudosPage:
         query = """
         SELECT p.id, p.fecha_pago, p.concepto, p.monto, p.metodo_pago, p.notas
         FROM pagos p
-        JOIN procedimientos_paciente pp ON p.procedimiento_id = pp.id
-        WHERE pp.paciente_id = %s
+        WHERE p.paciente_id = %s
         ORDER BY p.fecha_pago DESC, p.created_at DESC
         """
         
@@ -235,9 +232,9 @@ class AdeudosPage:
         query = """
         SELECT pp.id, pr.nombre, pp.costo - COALESCE(SUM(pg.monto), 0) as pendiente
         FROM procedimientos_paciente pp
-        JOIN procedimientos pr ON pp.procedimiento_id = pr.id
+        LEFT JOIN procedimientos pr ON pp.procedimiento_id = pr.id
         LEFT JOIN pagos pg ON pp.id = pg.procedimiento_id
-        WHERE pp.paciente_id = %s AND pp.estado = 'completado'
+        WHERE pp.paciente_id = %s AND pp.estado IN ('completado', 'en_proceso')
         GROUP BY pp.id, pr.nombre, pp.costo
         HAVING pp.costo - COALESCE(SUM(pg.monto), 0) > 0
         """

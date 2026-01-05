@@ -2,8 +2,9 @@ from nicegui import ui
 import database as db
 
 class OdontogramaView:
-    def __init__(self, paciente_id):
+    def __init__(self, paciente_id, on_update=None):
         self.paciente_id = paciente_id
+        self.on_update = on_update
         self.estados_dentales = {}
         self.nombres_dientes = {
             1: "3er Molar Superior Derecho", 2: "2do Molar Superior Derecho", 3: "1er Molar Superior Derecho",
@@ -118,31 +119,62 @@ class OdontogramaView:
         resultado = db.fetch_one(query, (self.paciente_id, numero_diente))
         nombre = self.nombres_dientes.get(numero_diente, f"Diente {numero_diente}")
         
+        # Valores por defecto para el formulario
+        estado_actual = resultado[0] if resultado else 'sano'
+        notas_actuales = resultado[1] if resultado else ''
+        fecha_actual = resultado[2] if resultado else None
+        
         dialog = ui.dialog()
         with dialog:
-            with ui.card().classes('min-w-[300px]'):
+            with ui.card().classes('min-w-[350px]'):
                 with ui.row().classes('w-full justify-between items-center'):
                     ui.label(f"Diente {numero_diente}").classes('text-h6')
                     ui.badge(nombre, color='primary')
                 
                 ui.separator().classes('my-2')
                 
-                if resultado:
-                    estado = resultado[0]
-                    notas = resultado[1]
-                    fecha = resultado[2]
-                    
-                    ui.label(f"Estado: {estado.title()}").classes('text-subtitle1')
-                    ui.label(f"Última actualización: {fecha.strftime('%d/%m/%Y %H:%M')}").classes('text-caption text-grey')
-                    
-                    if notas:
-                        ui.separator().classes('my-2')
-                        ui.label('Notas:').classes('font-bold')
-                        ui.markdown(notas).classes('text-body2 bg-grey-1 p-2 rounded')
-                else:
-                    ui.label('No hay información registrada para este diente').classes('text-italic text-grey')
+                if fecha_actual:
+                    ui.label(f"Última actualización: {fecha_actual.strftime('%d/%m/%Y %H:%M')}").classes('text-caption text-grey mb-2')
                 
-                with ui.row().classes('w-full justify-end mt-4'):
-                    ui.button('Cerrar', on_click=dialog.close).props('flat')
+                # Formulario de actualización
+                ui.label('Actualizar Estado').classes('font-bold mb-1')
+                
+                select_estado = ui.select(
+                    options={
+                        'sano': 'Sano',
+                        'cariado': 'Cariado',
+                        'obturado': 'Obturado',
+                        'extraido': 'Extraído',
+                        'en_tratamiento': 'En Tratamiento',
+                        'corona': 'Corona',
+                        'implante': 'Implante'
+                    },
+                    value=estado_actual
+                ).props('outlined dense').classes('w-full mb-2')
+                
+                input_notas = ui.textarea('Notas', value=notas_actuales).props('outlined dense').classes('w-full mb-4')
+                
+                with ui.row().classes('w-full justify-end gap-2'):
+                    ui.button('Cancelar', on_click=dialog.close).props('flat color=grey')
+                    ui.button('Actualizar', on_click=lambda: self.guardar_estado(numero_diente, select_estado.value, input_notas.value, dialog)).props('color=primary')
         
         dialog.open()
+
+    def guardar_estado(self, diente_numero, estado, notas, dialog):
+        query = """
+        INSERT INTO estados_dentales (paciente_id, diente_numero, estado, notas)
+        VALUES (%s, %s, %s, %s)
+        ON CONFLICT (paciente_id, diente_numero) 
+        DO UPDATE SET estado = EXCLUDED.estado, 
+                      notas = EXCLUDED.notas,
+                      ultima_actualizacion = CURRENT_TIMESTAMP
+        """
+        
+        try:
+            db.execute_query(query, (self.paciente_id, diente_numero, estado, notas))
+            ui.notify('Estado dental actualizado', type='positive')
+            dialog.close()
+            if self.on_update:
+                self.on_update()
+        except Exception as e:
+            ui.notify(f'Error al guardar: {str(e)}', type='negative')

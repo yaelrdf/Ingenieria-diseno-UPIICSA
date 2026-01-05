@@ -1,0 +1,1 @@
+{"authenticated":true,"user":{"id":3,"username":"yaeladmin","password":"a20a2b7bb0842d5cf8a0c06c626421fd51ec103925c1819a51271f2779afa730","nombre":"Yael RDF","puesto":"Developer","es_superadmin":true,"permisos":{"menus":["dashboard"],"puede_eliminar":false},"medico_id":null,"created_at":"2026-01-04T09:08:29.491547"}}

@@ -43,7 +43,6 @@ class ExpedientesPage:
         # Pestañas para diferentes secciones del expediente
         with ui.tabs(value='info').classes('w-full') as self.tabs:
             ui.tab('info', 'Información General')
-            ui.tab('historial', 'Historial Médico')
             ui.tab('procedimientos', 'Procedimientos Realizados')
             ui.tab('observaciones', 'Notas y Observaciones')
 
@@ -52,9 +51,6 @@ class ExpedientesPage:
         with self.tab_panels:
             with ui.tab_panel('info'):
                 self.info_general = ui.column().classes('w-full')
-
-            with ui.tab_panel('historial'):
-                self.historial_medico = ui.column().classes('w-full')
 
             with ui.tab_panel('procedimientos'):
                 self.procedimientos = ui.column().classes('w-full')
@@ -77,7 +73,6 @@ class ExpedientesPage:
 
     def mostrar_vacio(self):
         self.info_general.clear()
-        self.historial_medico.clear()
         self.procedimientos.clear()
         self.observaciones.clear()
         
@@ -91,7 +86,6 @@ class ExpedientesPage:
         
         # Cargar información del expediente
         self.cargar_info_general()
-        self.cargar_historial_medico()
         self.cargar_procedimientos()
         self.cargar_observaciones()
     
@@ -144,40 +138,6 @@ class ExpedientesPage:
                     with ui.expansion('Medicamentos Actuales', icon='medication').classes('w-full'):
                         ui.markdown(paciente_data[11]).classes('text-body2')
     
-    def cargar_historial_medico(self):
-        query = """
-        SELECT fecha, tipo, descripcion, observaciones, 
-               COALESCE(u.nombre, 'Sistema') as realizado_por
-        FROM historial_medico hm
-        LEFT JOIN usuarios u ON hm.realizado_por = u.id
-        WHERE paciente_id = %s
-        ORDER BY hm.fecha DESC, hm.created_at DESC
-        """
-        
-        historial = db.fetch_all(query, (self.paciente_id,))
-        
-        self.historial_medico.clear()
-        
-        with self.historial_medico:
-            ui.label('Historial Médico').classes('text-h6 mb-2')
-            
-            if not historial:
-                ui.label('No hay registro de historial médico').classes('text-italic')
-                return
-            
-            for item in historial:
-                with ui.card().classes('w-full mb-2'):
-                    with ui.row().classes('w-full justify-between items-center'):
-                        ui.label(f"{item[0]} - {item[1].title()}").classes('font-bold')
-                        ui.label(f"Por: {item[4]}")
-                    
-                    if item[2]:  # Descripción
-                        ui.label(item[2]).classes('text-body2')
-                    
-                    if item[3]:  # Observaciones
-                        with ui.expansion('Observaciones').classes('w-full'):
-                            ui.markdown(item[3]).classes('text-body2')
-    
     def cargar_procedimientos(self):
         query = """
         SELECT pp.id, pr.nombre, pp.estado, pp.fecha_realizacion, 
@@ -221,43 +181,40 @@ class ExpedientesPage:
                     if proc[5]:
                         ui.label(proc[5]).classes('text-body2')
     
-    def cargar_observaciones(self):
+    def cargar_observaciones(self, edit_mode=False):
         # Cargar observaciones generales del paciente
         query = "SELECT observaciones FROM pacientes WHERE id = %s"
         result = db.fetch_one(query, (self.paciente_id,))
+        obs_text = result[0] if result and result[0] else ""
         
         self.observaciones.clear()
         
         with self.observaciones:
             ui.label('Notas y Observaciones').classes('text-h6 mb-2')
             
-            if not result or not result[0]:
-                ui.label('No hay observaciones registradas').classes('text-italic')
-                return
-            
-            ui.markdown(result[0]).classes('text-body2')
-            
-            # Botón para agregar nueva observación
-            with ui.row().classes('mt-4'):
-                self.nueva_obs_input = ui.textarea('Nueva observación').props('outlined').classes('w-full')
-                ui.button('Agregar', on_click=self.agregar_observacion, icon='add').props('flat color=primary')
+            if edit_mode:
+                self.obs_input = ui.textarea('Observaciones', value=obs_text).props('outlined').classes('w-full')
+                with ui.row().classes('mt-4 gap-2'):
+                    ui.button('Guardar', on_click=self.guardar_observacion, icon='save').props('flat color=primary')
+                    ui.button('Cancelar', on_click=lambda: self.cargar_observaciones(False), icon='cancel').props('flat color=grey')
+            else:
+                if not obs_text:
+                    ui.label('No hay observaciones registradas').classes('text-italic')
+                else:
+                    ui.label(obs_text).classes('text-body2 whitespace-pre-wrap w-full')
+                
+                # Botón para editar
+                with ui.row().classes('mt-4'):
+                    ui.button('Editar', on_click=lambda: self.cargar_observaciones(True), icon='edit').props('flat color=primary')
     
-    def agregar_observacion(self):
-        nueva_obs = self.nueva_obs_input.value
-        if not nueva_obs:
-            ui.notify('Ingrese una observación', type='warning')
-            return
+    def guardar_observacion(self):
+        nueva_obs = self.obs_input.value
         
-        query = """
-        UPDATE pacientes 
-        SET observaciones = COALESCE(observaciones, '') || '\n\n' || %s || ' - ' || CURRENT_TIMESTAMP
-        WHERE id = %s
-        """
+        query = "UPDATE pacientes SET observaciones = %s WHERE id = %s"
         
         try:
             db.execute_query(query, (nueva_obs, self.paciente_id))
-            ui.notify('Observación agregada', type='positive')
-            self.nueva_obs_input.value = ""
-            self.cargar_observaciones()
+            ui.notify('Observaciones actualizadas', type='positive')
+            self.cargar_observaciones(False)
         except Exception as e:
             ui.notify(f'Error: {str(e)}', type='negative')

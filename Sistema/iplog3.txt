@@ -1,0 +1,75 @@
+Script started on 2026-01-04 04:22:27-06:00 [TERM="tmux-256color" TTY="/dev/pts/2" COLUMNS="133" LINES="31"]
+[1m[7m%[27m[1m[0m                                                                                                                                     k..IICSA/Sistema\[0m[27m[24m[J
+[1m[33myaeladmin[0m[33m[39m[1m [0m[1min [0m[1m[36mIngenieria-diseno-UPIICSA/Sistema[0m[36m[39m[1m [0m[1mat [0m[1m[32mdev-services[0m[32m[39m[1m [0m[1mvia [0m[1m[34mSistema[0m[34m[39m[1m [0m[1m[39m…[0m[39m[1m[37m
+[0m[37m[39m[1m[32m➜ [0m[32m[39m[K[130C[1A[1B[130D[?1h=[?2004hMM[0m[27m[24m[J
+[1m[33myaeladmin[0m[33m[39m[1m [0m[1min [0m[1m[36mIngenieria-diseno-UPIICSA/Sistema[0m[36m[39m[1m [0m[1mat [0m[1m[32mdev-services[0m[32m[39m[1m [0m[1mvia [0m[1m[33m🐍 3.11.2[0m[33m[39m[1m [0m[1mvia [0m[1m[34mSistema[0m[34m[39m[1m [0m[1m[39m…[0m[39m[1m[37m
+[0m[37m[39m[1m[32m➜ [0m[32m[39m[K[130C[1A[1B[130DMM[0m[27m[24m[J
+[1m[33myaeladmin[0m[33m[39m[1m [0m[1min [0m[1m[36mIngenieria-diseno-UPIICSA/Sistema[0m[36m[39m[1m [0m[1mat [0m[1m[32mdev-services[0m[32m[39m[1m [0m[1mon [0m[1m[37m[1m[37m[35m main[0m[35m[39m[1m[31m [!?][0m[31m[39m[0m[39m[1m [0m[1mvia [0m[1m[33m🐍 3.11.2[0m[33m[39m[1m [0m[1mvia [0m[1m[34mSistema[0m[34m[39m[1m [0m[1m[39m…[0m[39m[1m[37m
+[0m[37m[39m[1m[32m➜ [0m[32m[39m[K[130C[1A[1B[130Dscript iplog3.txt[17Dtmux a           [11Dcd /home/yaeladmin/git/Ingenieria-diseno-UPIICSA[48Dpython3 ./main.py                               [31D[?1l>[?2004l
+kpython3\INFO:database:Pool de conexiones inicializado
+INFO:database:Pool de conexiones inicializado
+NiceGUI ready to go on http://localhost:8080, http://172.17.0.1:8080, http://172.18.0.1:8080, http://172.19.0.1:8080, http://172.20.0.1:8080, http://172.21.0.1:8080, http://172.22.0.1:8080, http://172.23.0.1:8080, http://172.24.0.1:8080, http://172.25.0.1:8080, http://172.26.0.1:8080, http://172.27.0.1:8080, http://172.30.0.1:8080, http://172.31.0.1:8080, http://192.168.0.1:8080, and http://25.12.11.40:8080
+INFO:watchfiles.main:1 change detected
+INFO:__mp_main__:Visitor IP: 25.12.10.22 (Headers: CF=None, XFF=None, Real=None, Client=25.12.10.22)
+INFO:__mp_main__:Visitor IP: 25.12.10.22 (Headers: CF=None, XFF=None, Real=None, Client=25.12.10.22)
+INFO:__mp_main__:Visitor IP: 25.12.10.22 (Headers: CF=None, XFF=None, Real=None, Client=25.12.10.22)
+INFO:__mp_main__:Visitor IP: 25.12.10.22 (Headers: CF=None, XFF=None, Real=None, Client=25.12.10.22)
+INFO:__mp_main__:Visitor IP: 25.12.10.22 (Headers: CF=None, XFF=None, Real=None, Client=25.12.10.22)
+INFO:__mp_main__:Visitor IP: 25.12.10.22 (Headers: CF=None, XFF=None, Real=None, Client=25.12.10.22)
+INFO:__mp_main__:Visitor IP: 25.12.10.22 (Headers: CF=None, XFF=None, Real=None, Client=25.12.10.22)
+INFO:__mp_main__:Visitor IP: 25.12.10.22 (Headers: CF=None, XFF=None, Real=None, Client=25.12.10.22)
+INFO:__mp_main__:Visitor IP: 25.12.10.22 (Headers: CF=None, XFF=None, Real=None, Client=25.12.10.22)
+INFO:__mp_main__:Visitor IP: 25.12.10.22 (Headers: CF=None, XFF=None, Real=None, Client=25.12.10.22)
+INFO:watchfiles.main:1 change detected
+INFO:__mp_main__:Visitor IP: 187.131.56.30 (Headers: CF=187.131.56.30, XFF=187.131.56.30, Real=None, Client=187.131.56.30)
+INFO:__mp_main__:Visitor IP: 25.12.10.22 (Headers: CF=None, XFF=None, Real=None, Client=25.12.10.22)
+INFO:__mp_main__:Visitor IP: 187.131.56.30 (Headers: CF=187.131.56.30, XFF=187.131.56.30, Real=None, Client=187.131.56.30)
+INFO:__mp_main__:Visitor IP: 187.131.56.30 (Headers: CF=187.131.56.30, XFF=187.131.56.30, Real=None, Client=187.131.56.30)
+INFO:watchfiles.main:2 changes detected
+INFO:watchfiles.main:1 change detected
+INFO:__mp_main__:Visitor IP: 187.131.56.30 (Headers: CF=187.131.56.30, XFF=187.131.56.30, Real=None, Client=187.131.56.30)
+INFO:__mp_main__:Visitor IP: 25.12.10.22 (Headers: CF=None, XFF=None, Real=None, Client=25.12.10.22)
+INFO:watchfiles.main:1 change detected
+INFO:__mp_main__:Visitor IP: 25.12.10.22 (Headers: CF=None, XFF=None, Real=None, Client=25.12.10.22)
+INFO:watchfiles.main:1 change detected
+INFO:__mp_main__:Visitor IP: 25.12.10.22 (Headers: CF=None, XFF=None, Real=None, Client=25.12.10.22)
+INFO:__mp_main__:Visitor IP: 25.12.10.22 (Headers: CF=None, XFF=None, Real=None, Client=25.12.10.22)
+INFO:__mp_main__:Visitor IP: 25.12.10.22 (Headers: CF=None, XFF=None, Real=None, Client=25.12.10.22)
+INFO:__mp_main__:Visitor IP: 187.131.56.30 (Headers: CF=187.131.56.30, XFF=187.131.56.30, Real=None, Client=187.131.56.30)
+INFO:__mp_main__:Visitor IP: 25.12.10.22 (Headers: CF=None, XFF=None, Real=None, Client=25.12.10.22)
+INFO:__mp_main__:Visitor IP: 25.12.10.22 (Headers: CF=None, XFF=None, Real=None, Client=25.12.10.22)
+INFO:__mp_main__:Visitor IP: 25.12.10.22 (Headers: CF=None, XFF=None, Real=None, Client=25.12.10.22)
+INFO:__mp_main__:Visitor IP: 25.12.10.22 (Headers: CF=None, XFF=None, Real=None, Client=25.12.10.22)
+INFO:__mp_main__:Visitor IP: 25.12.10.22 (Headers: CF=None, XFF=None, Real=None, Client=25.12.10.22)
+INFO:__mp_main__:Visitor IP: 25.12.10.22 (Headers: CF=None, XFF=None, Real=None, Client=25.12.10.22)
+INFO:__mp_main__:Visitor IP: 25.12.10.22 (Headers: CF=None, XFF=None, Real=None, Client=25.12.10.22)
+INFO:__mp_main__:Visitor IP: 25.12.10.22 (Headers: CF=None, XFF=None, Real=None, Client=25.12.10.22)
+INFO:watchfiles.main:1 change detected
+INFO:__mp_main__:Visitor IP: 25.12.10.22 (Headers: CF=None, XFF=None, Real=None, Client=25.12.10.22)
+INFO:__mp_main__:Visitor IP: 25.12.10.22 (Headers: CF=None, XFF=None, Real=None, Client=25.12.10.22)
+INFO:__mp_main__:Visitor IP: 25.12.10.22 (Headers: CF=None, XFF=None, Real=None, Client=25.12.10.22)
+INFO:watchfiles.main:1 change detected
+INFO:watchfiles.main:3 changes detected
+[33mWARNING[0m:  WatchFiles detected changes in 'pages/dashboard.py'. Reloading...
+INFO:database:Pool de conexiones cerrado
+INFO:database:Pool de conexiones inicializado
+INFO:watchfiles.main:3 changes detected
+NiceGUI ready to go on http://localhost:8080, http://172.17.0.1:8080, http://172.18.0.1:8080, http://172.19.0.1:8080, http://172.20.0.1:8080, http://172.21.0.1:8080, http://172.22.0.1:8080, http://172.23.0.1:8080, http://172.24.0.1:8080, http://172.25.0.1:8080, http://172.26.0.1:8080, http://172.27.0.1:8080, http://172.30.0.1:8080, http://172.31.0.1:8080, http://192.168.0.1:8080, and http://25.12.11.40:8080
+INFO:__mp_main__:Visitor IP: 25.12.10.22 (Headers: CF=None, XFF=None, Real=None, Client=25.12.10.22)
+INFO:watchfiles.main:1 change detected
+INFO:__mp_main__:Visitor IP: 25.12.10.22 (Headers: CF=None, XFF=None, Real=None, Client=25.12.10.22)
+INFO:watchfiles.main:3 changes detected
+[33mWARNING[0m:  WatchFiles detected changes in 'pages/dashboard.py'. Reloading...
+INFO:database:Pool de conexiones cerrado
+INFO:database:Pool de conexiones inicializado
+INFO:watchfiles.main:3 changes detected
+NiceGUI ready to go on http://localhost:8080, http://172.17.0.1:8080, http://172.18.0.1:8080, http://172.19.0.1:8080, http://172.20.0.1:8080, http://172.21.0.1:8080, http://172.22.0.1:8080, http://172.23.0.1:8080, http://172.24.0.1:8080, http://172.25.0.1:8080, http://172.26.0.1:8080, http://172.27.0.1:8080, http://172.30.0.1:8080, http://172.31.0.1:8080, http://192.168.0.1:8080, and http://25.12.11.40:8080
+INFO:__mp_main__:Visitor IP: 25.12.10.22 (Headers: CF=None, XFF=None, Real=None, Client=25.12.10.22)
+INFO:watchfiles.main:1 change detected
+INFO:__mp_main__:Visitor IP: 25.12.10.22 (Headers: CF=None, XFF=None, Real=None, Client=25.12.10.22)
+INFO:__mp_main__:Visitor IP: 25.12.10.22 (Headers: CF=None, XFF=None, Real=None, Client=25.12.10.22)
+INFO:__mp_main__:Visitor IP: 25.12.10.22 (Headers: CF=None, XFF=None, Real=None, Client=25.12.10.22)
+INFO:__mp_main__:Visitor IP: 25.12.10.22 (Headers: CF=None, XFF=None, Real=None, Client=25.12.10.22)
+INFO:watchfiles.main:3 changes detected
+[33mWARNING[0m:  WatchFiles detected changes in 'main.py'. Reloading...
+INFO:database:Pool 

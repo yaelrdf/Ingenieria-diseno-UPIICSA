@@ -1,4 +1,4 @@
-from nicegui import ui
+from nicegui import ui, app
 import database as db
 from models.usuario import Usuario
 from components.usuario_form import UsuarioForm
@@ -6,15 +6,23 @@ from datetime import datetime
 
 class MedicosPage:
     def __init__(self):
+        user = app.storage.user.get('user', {})
+        self.puede_eliminar = user.get('es_superadmin', False) or \
+                             (user.get('permisos', {}) if isinstance(user.get('permisos'), dict) else {}).get('puede_eliminar', False)
         self.medicos_container = None
         self.create_content()
     
     def create_content(self):
         ui.label('Gestión de Médicos').classes('text-h4 mb-4')
         
-        with ui.row().classes('w-full items-center mb-4'):
+        with ui.row().classes('w-full items-center mb-4 gap-4'):
             ui.button('Nuevo Médico', on_click=self.mostrar_form_nuevo, 
                      icon='person_add').props('flat color=primary')
+            
+            self.search_input = ui.input(placeholder='Buscar por nombre, email o teléfono...', 
+                                       on_change=self.cargar_medicos).props('outlined dense clearable').classes('flex-grow')
+            with self.search_input:
+                ui.icon('search')
         
         # Container para las tarjetas
         self.medicos_container = ui.column().classes('w-full gap-3')
@@ -22,8 +30,18 @@ class MedicosPage:
         self.cargar_medicos()
     
     def cargar_medicos(self):
-        sql = "SELECT id, nombre, email, telefono, especialidad, activo FROM usuarios ORDER BY nombre"
-        resultados = db.fetch_all(sql)
+        search_term = self.search_input.value if hasattr(self, 'search_input') and self.search_input.value else ""
+        
+        sql = "SELECT id, nombre, email, telefono, especialidad, activo FROM usuarios"
+        params = []
+        
+        if search_term:
+            sql += " WHERE nombre ILIKE %s OR email ILIKE %s OR telefono ILIKE %s"
+            term = f"%{search_term}%"
+            params = [term, term, term]
+            
+        sql += " ORDER BY nombre"
+        resultados = db.fetch_all(sql, params)
         
         self.medicos_container.clear()
         
@@ -66,7 +84,8 @@ class MedicosPage:
                     with ui.row().classes('gap-2'):
                         ui.button(icon='edit', on_click=lambda id=medico_id: self.editar_medico(id)).props('flat')
                         ui.button(icon='event', on_click=lambda id=medico_id: self.ver_citas(id)).props('flat color=blue').tooltip('Ver Citas')
-                        ui.button(icon='delete', on_click=lambda id=medico_id: self.eliminar_medico(id)).props('flat color=red')
+                        if self.puede_eliminar:
+                            ui.button(icon='delete', on_click=lambda id=medico_id: self.eliminar_medico(id)).props('flat color=red')
 
     def mostrar_form_nuevo(self):
         def guardar_medico(usuario):

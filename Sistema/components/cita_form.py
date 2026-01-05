@@ -130,6 +130,10 @@ class CitaForm:
         return options
     
     def guardar(self):
+        if not self.paciente_id:
+            ui.notify('Por favor seleccione un paciente', type='warning')
+            return
+            
         # Combinar fecha y hora
         fecha_str = self.input_fecha.value
         hora_str = self.input_hora.value

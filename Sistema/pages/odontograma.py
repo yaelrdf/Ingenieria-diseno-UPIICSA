@@ -75,46 +75,11 @@ class OdontogramaPage:
                 ui.label(f"Odontograma de: {paciente_data[0]} {paciente_data[1]}").classes('text-h5 mb-2')
             
             # Crear el odontograma
-            odontograma = OdontogramaView(self.paciente_id)
+            OdontogramaView(self.paciente_id, on_update=self.cargar_odontograma)
             
             # Tabla de estados dentales
             with ui.expansion('Detalle de Estados Dentales', icon='list').classes('w-full mt-4'):
                 self.cargar_tabla_estados()
-            
-            # Formulario para actualizar estado dental
-            with ui.card().classes('w-full mt-4'):
-                ui.label('Actualizar Estado Dental').classes('text-h6 mb-2')
-                
-                with ui.row().classes('w-full items-center'):
-                    self.select_diente = ui.select(
-                        label='Diente',
-                        options=self.generar_opciones_dientes(),
-                        value=None
-                    ).props('outlined').classes('w-32')
-                    
-                    self.select_estado = ui.select(
-                        label='Estado',
-                        options={
-                            'sano': 'Sano',
-                            'cariado': 'Cariado',
-                            'obturado': 'Obturado',
-                            'extraido': 'Extraído',
-                            'en_tratamiento': 'En Tratamiento',
-                            'corona': 'Corona',
-                            'implante': 'Implante'
-                        },
-                        value='sano'
-                    ).props('outlined').classes('w-40')
-                    
-                    self.input_notas = ui.input('Notas').props('outlined').classes('w-64')
-                    
-                    ui.button('Guardar', on_click=self.guardar_estado, icon='save').props('flat color=primary')
-    
-    def generar_opciones_dientes(self):
-        opciones = {}
-        for i in range(1, 33):
-            opciones[i] = f"{i} - {self.nombres_dientes.get(i, f'Diente {i}')}"
-        return opciones
     
     def cargar_tabla_estados(self):
         query = """
@@ -129,7 +94,6 @@ class OdontogramaPage:
         columns = [
             {'name': 'diente', 'label': 'Diente', 'field': 'diente'},
             {'name': 'estado', 'label': 'Estado', 'field': 'estado'},
-            {'name': 'estado_color', 'label': 'Color', 'field': 'estado_color'}, # Oculto por defecto? No, field no está en columns
             {'name': 'notas', 'label': 'Notas', 'field': 'notas'},
             {'name': 'ultima_actualizacion', 'label': 'Última Actualización', 'field': 'ultima_actualizacion'}
         ]
@@ -162,34 +126,3 @@ class OdontogramaPage:
                 </q-badge>
             </q-td>
         ''')
-    
-    def guardar_estado(self):
-        diente = self.select_diente.value
-        estado = self.select_estado.value
-        notas = self.input_notas.value
-        
-        if not diente:
-            ui.notify('Seleccione un diente', type='warning')
-            return
-        
-        query = """
-        INSERT INTO estados_dentales (paciente_id, diente_numero, estado, notas)
-        VALUES (%s, %s, %s, %s)
-        ON CONFLICT (paciente_id, diente_numero) 
-        DO UPDATE SET estado = EXCLUDED.estado, 
-                      notas = EXCLUDED.notas,
-                      ultima_actualizacion = CURRENT_TIMESTAMP
-        """
-        
-        try:
-            db.execute_query(query, (self.paciente_id, diente, estado, notas))
-            ui.notify('Estado dental guardado', type='positive')
-            
-            # Actualizar la vista
-            self.cargar_odontograma()
-            
-            # Limpiar formulario
-            self.input_notas.value = ""
-            
-        except Exception as e:
-            ui.notify(f'Error al guardar: {str(e)}', type='negative')

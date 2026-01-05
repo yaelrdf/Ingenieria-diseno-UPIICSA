@@ -8,7 +8,26 @@ class PacienteForm:
         self.on_save = on_save
         self.on_cancel = on_cancel
         self.create_form()
+        if self.paciente.fecha_nacimiento:
+            self.calcular_edad()
     
+    def calcular_edad(self, e=None):
+        if not self.fecha_nacimiento.value:
+            self.edad_display.set_text('')
+            return
+        try:
+            fecha_val = self.fecha_nacimiento.value
+            if isinstance(fecha_val, str):
+                fecha_nac = date.fromisoformat(fecha_val)
+            else:
+                fecha_nac = fecha_val
+            
+            hoy = date.today()
+            edad = hoy.year - fecha_nac.year - ((hoy.month, hoy.day) < (fecha_nac.month, fecha_nac.day))
+            self.edad_display.set_text(str(edad))
+        except Exception:
+            self.edad_display.set_text('')
+
     def create_form(self):
         with ui.card().classes('w-full'):
             ui.label('Datos del Paciente').classes('text-h6')
@@ -23,8 +42,11 @@ class PacienteForm:
             with ui.row().classes('w-full'):
                 with ui.column().classes('w-1/2'):
                     ui.label('Fecha de Nacimiento')
-                    self.fecha_nacimiento = ui.date(value=self.paciente.fecha_nacimiento).props('outlined').classes('w-full')
-                self.edad = ui.number('Edad', value=self.paciente.edad, format='%.0f').props('outlined').classes('w-1/2')
+                    self.fecha_nacimiento = ui.date(value=self.paciente.fecha_nacimiento, 
+                                                 on_change=self.calcular_edad).props('outlined').classes('w-full')
+                with ui.column().classes('w-1/2 gap-0'):
+                    ui.label('Edad').classes('text-gray-600 text-caption')
+                    self.edad_display = ui.label(str(self.paciente.edad or '')).classes('text-body1')
             
             with ui.row().classes('w-full'):
                 self.genero = ui.select(['Masculino', 'Femenino', 'Otro'], 
@@ -65,7 +87,7 @@ class PacienteForm:
             nombre=self.nombre.value,
             apellidos=self.apellidos.value,
             fecha_nacimiento=fecha_nac,
-            edad=int(self.edad.value) if self.edad.value is not None else None,
+            edad=int(self.edad_display.text) if self.edad_display.text else None,
             genero=self.genero.value,
             telefono=self.telefono.value,
             email=self.email.value,

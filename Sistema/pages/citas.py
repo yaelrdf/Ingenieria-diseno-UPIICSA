@@ -1,4 +1,4 @@
-from nicegui import ui
+from nicegui import ui, app
 from datetime import datetime, date, timedelta
 import database as db
 from models.cita import Cita
@@ -7,32 +7,18 @@ from components.paciente_selector import PacienteSelector
 
 class CitasPage:
     def __init__(self):
-        self.fecha_seleccionada = date.today()
+        user = app.storage.user.get('user', {})
+        self.puede_eliminar = user.get('es_superadmin', False) or \
+                             (user.get('permisos', {}) if isinstance(user.get('permisos'), dict) else {}).get('puede_eliminar', False)
         self.paciente_id = None
-        self.paciente_nombre_filtro = "Todos los pacientes"
+        self.paciente_nombre_filtro = "Ningún paciente seleccionado"
         self.create_content()
     
     def create_content(self):
         ui.label('Gestión de Citas').classes('text-h4 mb-4')
         
-        # Diálogo para seleccionar fecha
-        with ui.dialog() as self.dialog_fecha:
-            with ui.card():
-                self.fecha_input = ui.date(value=self.fecha_seleccionada, 
-                                          on_change=self.on_date_change).props('outlined')
-
         # Barra de Herramientas (Filtros y Acciones)
         with ui.row().classes('w-full items-center mb-4 gap-4'):
-            # Selector de fecha
-            with ui.row().classes('items-center gap-2 bg-blue-50 p-2 rounded cursor-pointer').on('click', self.dialog_fecha.open):
-                ui.icon('calendar_today', color='primary')
-                self.label_fecha = ui.label(self.fecha_seleccionada.strftime('%d/%m/%Y')).classes('font-bold')
-                ui.icon('arrow_drop_down', color='primary')
-
-            ui.button('Hoy', on_click=self.set_fecha_hoy).props('flat')
-            
-            ui.separator().props('vertical').classes('h-8')
-
             # Selector de paciente para filtrar
             ui.button('Seleccionar Paciente', icon='person_search', on_click=self.abrir_selector_filtro).props('outline color=primary')
             
@@ -52,7 +38,7 @@ class CitasPage:
         # Tabla de citas
         columns = [
             {'name': 'id', 'label': 'ID', 'field': 'id', 'sortable': True},
-            {'name': 'hora', 'label': 'Hora', 'field': 'hora', 'sortable': True},
+            {'name': 'fecha_hora', 'label': 'Fecha y Hora', 'field': 'fecha_hora', 'sortable': True},
             {'name': 'paciente', 'label': 'Paciente', 'field': 'paciente', 'sortable': True},
             {'name': 'tipo', 'label': 'Tipo', 'field': 'tipo', 'sortable': True},
             {'name': 'procedimiento', 'label': 'Procedimiento', 'field': 'procedimiento'},
@@ -77,13 +63,13 @@ class CitasPage:
             </q-td>
         ''')
         
-        self.citas_table.add_slot('body-cell-acciones', '''
+        self.citas_table.add_slot('body-cell-acciones', f'''
             <q-td :props="props">
                 <q-btn flat round dense icon="edit" @click="$parent.$emit('edit', props.row.id)" v-if="['programada', 'en_curso'].includes(props.row.estado)"></q-btn>
                 <q-btn flat round dense icon="cancel" color="orange" @click="$parent.$emit('cancel', props.row.id)" v-if="['programada', 'en_curso'].includes(props.row.estado)"></q-btn>
                 <q-btn flat round dense icon="play_arrow" color="green" @click="$parent.$emit('start', props.row.id)" v-if="props.row.estado === 'programada'"></q-btn>
                 <q-btn flat round dense icon="check" color="green" @click="$parent.$emit('complete', props.row.id)" v-if="props.row.estado === 'en_curso'"></q-btn>
-                <q-btn flat round dense icon="delete" color="red" @click="$parent.$emit('delete', props.row.id)"></q-btn>
+                <q-btn flat round dense icon="delete" color="red" @click="$parent.$emit('delete', props.row.id)" v-if="props.row.can_delete"></q-btn>
             </q-td>
         ''')
         
@@ -95,24 +81,6 @@ class CitasPage:
         self.citas_table.on('delete', lambda e: self.eliminar_cita(e.args))
         
         self.cargar_citas()
-    
-    def set_fecha_hoy(self):
-        self.fecha_input.value = date.today()
-        self.actualizar_vista_fecha()
-        self.cargar_citas()
-    
-    def on_date_change(self, e):
-        self.dialog_fecha.close()
-        self.actualizar_vista_fecha()
-        self.cargar_citas()
-
-    def actualizar_vista_fecha(self):
-        val = self.fecha_input.value
-        if isinstance(val, str):
-            d = date.fromisoformat(val)
-        else:
-            d = val
-        self.label_fecha.set_text(d.strftime('%d/%m/%Y'))
     
     def abrir_selector_filtro(self):
         PacienteSelector(on_select=self.aplicar_filtro_paciente).open()
@@ -126,18 +94,21 @@ class CitasPage:
         
     def limpiar_filtro_paciente(self):
         self.paciente_id = None
-        self.paciente_nombre_filtro = "Todos los pacientes"
+        self.paciente_nombre_filtro = "Ningún paciente seleccionado"
         self.label_paciente_filtro.set_text(self.paciente_nombre_filtro)
         self.paciente_filtro_display.set_visibility(False)
         self.cargar_citas()
 
     def cargar_citas(self):
-        fecha = self.fecha_input.value
+        if not self.paciente_id:
+            self.citas_table.rows = []
+            return
+            
         paciente_id = self.paciente_id
         
         query = """
         SELECT c.id, 
-               TO_CHAR(c.fecha_hora, 'HH24:MI') as hora,
+               TO_CHAR(c.fecha_hora, 'DD/MM/YYYY HH24:MI') as fecha_hora,
                p.nombre || ' ' || p.apellidos as paciente,
                c.tipo,
                c.procedimiento,
@@ -146,16 +117,14 @@ class CitasPage:
         FROM citas c
         JOIN pacientes p ON c.paciente_id = p.id
         LEFT JOIN usuarios u ON c.doctor_id = u.id
-        WHERE DATE(c.fecha_hora) = %s
         """
         
-        params = [fecha]
-        
+        params = []
         if paciente_id:
-            query += " AND c.paciente_id = %s"
+            query += " WHERE c.paciente_id = %s"
             params.append(paciente_id)
         
-        query += " ORDER BY c.fecha_hora"
+        query += " ORDER BY c.fecha_hora DESC"
         
         citas = db.fetch_all(query, params)
         
@@ -170,13 +139,14 @@ class CitasPage:
             
             rows.append({
                 'id': cita[0],
-                'hora': cita[1],
+                'fecha_hora': cita[1],
                 'paciente': cita[2],
                 'tipo': cita[3],
                 'procedimiento': cita[4],
                 'doctor': cita[5],
                 'estado': cita[6],
-                'estado_color': estado_color
+                'estado_color': estado_color,
+                'can_delete': self.puede_eliminar
             })
         
         self.citas_table.rows = rows
@@ -212,7 +182,9 @@ class CitasPage:
         
         dialog = ui.dialog().classes('w-full max-w-2xl')
         with dialog:
-            CitaForm(on_save=guardar_cita, on_cancel=dialog.close)
+            # Pre-seleccionar paciente si ya hay uno filtrado
+            cita_previa = Cita(paciente_id=self.paciente_id) if self.paciente_id else None
+            CitaForm(cita=cita_previa, on_save=guardar_cita, on_cancel=dialog.close)
         dialog.open()
     
     def editar_cita(self, cita_id):

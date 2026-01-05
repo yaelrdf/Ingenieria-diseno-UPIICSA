@@ -1,9 +1,12 @@
-from nicegui import ui
+from nicegui import ui, app
 from components.paciente_form import PacienteForm
 import database as db
 
 class PacientesPage:
     def __init__(self):
+        user = app.storage.user.get('user', {})
+        self.puede_eliminar = user.get('es_superadmin', False) or \
+                             (user.get('permisos', {}) if isinstance(user.get('permisos'), dict) else {}).get('puede_eliminar', False)
         self.search_query = ""
         self.pacientes = []
         self.pacientes_container = None
@@ -76,7 +79,8 @@ class PacientesPage:
                     with ui.row().classes('gap-2'):
                         ui.button(icon='edit', on_click=lambda id=paciente_id: self.editar_paciente(id)).props('flat')
                         ui.button(icon='visibility', on_click=lambda id=paciente_id: self.ver_expediente(id)).props('flat color=blue')
-                    ui.button(icon='delete', on_click=lambda id=paciente_id: self.eliminar_paciente(id)).props('flat color=red')
+                    if self.puede_eliminar:
+                        ui.button(icon='delete', on_click=lambda id=paciente_id: self.eliminar_paciente(id)).props('flat color=red')
     
     def buscar_pacientes(self):
         query = self.search_input.value
