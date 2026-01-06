@@ -43,6 +43,7 @@ CREATE TABLE citas (
     fecha_hora TIMESTAMP NOT NULL,
     tipo VARCHAR(50) NOT NULL, -- 'consulta', 'limpieza', 'procedimiento'
     procedimiento VARCHAR(100),
+    costo DECIMAL(10,2) DEFAULT 0,
     estado VARCHAR(20) DEFAULT 'programada', -- 'programada', 'en_curso', 'completada', 'cancelada'
     notas TEXT,
     duracion_minutos INTEGER DEFAULT 30,
@@ -110,6 +111,19 @@ CREATE TABLE historial_medico (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Tabla de Usuarios del Sistema (para Login)
+CREATE TABLE usuarios_sistema (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    nombre VARCHAR(100) NOT NULL,
+    puesto VARCHAR(100),
+    es_superadmin BOOLEAN DEFAULT false,
+    permisos JSONB DEFAULT '{"menus": ["dashboard"], "puede_eliminar": false}',
+    medico_id INTEGER REFERENCES usuarios(id) ON DELETE SET NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Índices para mejorar el rendimiento
 CREATE INDEX idx_pacientes_curp ON pacientes(curp);
 CREATE INDEX idx_pacientes_nombre ON pacientes(nombre, apellidos);
@@ -120,15 +134,6 @@ CREATE INDEX idx_procedimientos_paciente ON procedimientos_paciente(paciente_id)
 CREATE INDEX idx_estados_dentales_paciente ON estados_dentales(paciente_id);
 CREATE INDEX idx_pagos_paciente ON pagos(paciente_id);
 
--- Datos iniciales
-INSERT INTO usuarios (nombre, email, especialidad) VALUES 
-('Dr. Juan Pérez', 'juan.perez@clinica.com', 'Ortodoncista'),
-('Dra. María García', 'maria.garcia@clinica.com', 'Periodoncista');
-
-INSERT INTO procedimientos (nombre, descripcion, costo, categoria) VALUES
-('Consulta inicial', 'Consulta y evaluación inicial', 500.00, 'consulta'),
-('Limpieza dental', 'Limpieza profesional', 800.00, 'limpieza'),
-('Obturación (empaste)', 'Tratamiento de caries', 1200.00, 'restauracion'),
-('Extracción simple', 'Extracción de pieza dental', 1500.00, 'extraccion'),
-('Endodoncia', 'Tratamiento de conducto', 3000.00, 'endodoncia'),
-('Corona dental', 'Colocación de corona', 4500.00, 'protesis');
+-- Usuario administrador por defecto (password: admin123)
+INSERT INTO usuarios_sistema (username, password, nombre, puesto, es_superadmin, permisos)
+VALUES ('admin', '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9', 'Administrador', 'Super Usuario', true, '{"menus": ["dashboard", "citas", "pacientes", "expedientes", "odontograma", "adeudos", "medicos", "usuarios"], "puede_eliminar": true}');

@@ -1,64 +1,0 @@
-Script started on 2025-12-29 21:30:38-06:00 [TERM="xterm-256color" TTY="/dev/pts/2" COLUMNS="156" LINES="9"]
-[1m[7m%[27m[1m[0m                                                                                                                                                            ]2;yaeladmin@dev-services:~/git/Ingenieria-diseno-UPIICSA/Sistema]1;..IICSA/Sistema[0m[27m[24m[J
-[1m[33myaeladmin[0m[33m[39m[1m [0m[1min [0m[1m[36mIngenieria-diseno-UPIICSA/Sistema[0m[36m[39m[1m [0m[1mat [0m[1m[32mdev-services[0m[32m[39m[1m [0m[1mvia [0m[1m[34mSistema[0m[34m[39m[1m [0m[1m[39m…[0m[39m[1m[37m
-[0m[37m[39m[1m[32m➜ [0m[32m[39m[K[153C[1A[1B[153D[?1h=[?2004h[A[A[0m[27m[24m[J
-[1m[33myaeladmin[0m[33m[39m[1m [0m[1min [0m[1m[36mIngenieria-diseno-UPIICSA/Sistema[0m[36m[39m[1m [0m[1mat [0m[1m[32mdev-services[0m[32m[39m[1m [0m[1mon [0m[1m[37m[1m[37m[35m main[0m[35m[39m[1m[31m [!?][0m[31m[39m[0m[39m[1m [0m[1mvia [0m[1m[34mSistema[0m[34m[39m[1m [0m[1m[39m…[0m[39m[1m[37m
-[0m[37m[39m[1m[32m➜ [0m[32m[39m[K[153C[1A[1B[153Dscript ui-error.txt[19Dpython3 ./main.py  [?1l>[?2004l
-]2;python3 ./main.py]1;python3INFO:database:Pool de conexiones inicializado
-NiceGUI ready to go on http://localhost:8080, http://172.17.0.1:8080, http://172.18.0.1:8080, http://172.19.0.1:8080, http://172.20.0.1:8080, http://172.21.0.1:8080, http://172.22.0.1:8080, http://172.23.0.1:8080, http://172.24.0.1:8080, http://172.25.0.1:8080, http://172.26.0.1:8080, http://172.27.0.1:8080, http://172.29.0.1:8080, http://172.30.0.1:8080, http://172.31.0.1:8080, http://192.168.0.1:8080, and http://25.12.11.40:8080
-ERROR:nicegui:combine() argument 1 must be datetime.date, not str
-Traceback (most recent call last):
-  File "/home/yaeladmin/git/Ingenieria-diseno-UPIICSA/Sistema/.venv/lib/python3.11/site-packages/nicegui/events.py", line 442, in handle_event
-    result = cast(Callable[[], Any], handler)()
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/yaeladmin/git/Ingenieria-diseno-UPIICSA/Sistema/components/cita_form.py", line 134, in guardar
-    fecha_hora = datetime.combine(fecha, hora)
-                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-TypeError: combine() argument 1 must be datetime.date, not str
-ERROR:nicegui:Date.__init__() got an unexpected keyword argument 'label'
-Traceback (most recent call last):
-  File "/home/yaeladmin/git/Ingenieria-diseno-UPIICSA/Sistema/.venv/lib/python3.11/site-packages/nicegui/events.py", line 442, in handle_event
-    result = cast(Callable[[], Any], handler)()
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/yaeladmin/git/Ingenieria-diseno-UPIICSA/Sistema/pages/adeudos.py", line 242, in mostrar_form_pago
-    PagoForm(
-  File "/home/yaeladmin/git/Ingenieria-diseno-UPIICSA/Sistema/components/pago_form.py", line 11, in __init__
-    self.create_form()
-  File "/home/yaeladmin/git/Ingenieria-diseno-UPIICSA/Sistema/components/pago_form.py", line 55, in create_form
-    self.input_fecha = ui.date(value=date.today(), label='Fecha de Pago').props('outlined').classes('w-full')
-                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-TypeError: Date.__init__() got an unexpected keyword argument 'label'
-^CINFO:database:Pool de conexiones cerrado
-Traceback (most recent call last):
-  File "/usr/lib/python3.11/asyncio/runners.py", line 118, in run
-    return self._loop.run_until_complete(task)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "uvloop/loop.pyx", line 1518, in uvloop.loop.Loop.run_until_complete
-asyncio.exceptions.CancelledError
-
-During handling of the above exception, another exception occurred:
-
-Traceback (most recent call last):
-  File "/home/yaeladmin/git/Ingenieria-diseno-UPIICSA/Sistema/./main.py", line 164, in <module>
-    ui.run(
-  File "/home/yaeladmin/git/Ingenieria-diseno-UPIICSA/Sistema/.venv/lib/python3.11/site-packages/nicegui/ui_run.py", line 293, in run
-    Server.instance.run()
-  File "/home/yaeladmin/git/Ingenieria-diseno-UPIICSA/Sistema/.venv/lib/python3.11/site-packages/nicegui/server.py", line 37, in run
-    super().run(sockets=sockets)
-  File "/home/yaeladmin/git/Ingenieria-diseno-UPIICSA/Sistema/.venv/lib/python3.11/site-packages/uvicorn/server.py", line 67, in run
-    return asyncio_run(self.serve(sockets=sockets), loop_factory=self.config.get_loop_factory())
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/yaeladmin/git/Ingenieria-diseno-UPIICSA/Sistema/.venv/lib/python3.11/site-packages/uvicorn/_compat.py", line 30, in asyncio_run
-    return runner.run(main)
-           ^^^^^^^^^^^^^^^^
-  File "/usr/lib/python3.11/asyncio/runners.py", line 123, in run
-    raise KeyboardInterrupt()
-KeyboardInterrupt
-
-[1m[7m%[27m[1m[0m                                                                                                                                                            ]2;yaeladmin@dev-services:~/git/Ingenieria-diseno-UPIICSA/Sistema]1;..IICSA/Sistema[0m[27m[24m[J
-[1m[33myaeladmin[0m[33m[39m[1m [0m[1min [0m[1m[36mIngenieria-diseno-UPIICSA/Sistema[0m[36m[39m[1m [0m[1mat [0m[1m[32mdev-services[0m[32m[39m[1m [0m[1mvia [0m[1m[34mSistema[0m[34m[39m[1m [0m[1mtook [0m[1m[33m4m 6.6s[0m[33m[39m[1m [0m[1m[39m…[0m[39m[1m[37m
-[0m[37m[39m[1m[31m➜ [0m[31m[39m[K[153C[1A[1B[153D[?1h=[?2004h[A[A[0m[27m[24m[J
-[1m[33myaeladmin[0m[33m[39m[1m [0m[1min [0m[1m[36mIngenieria-diseno-UPIICSA/Sistema[0m[36m[39m[1m [0m[1mat [0m[1m[32mdev-services[0m[32m[39m[1m [0m[1mon [0m[1m[37m[1m[37m[35m main[0m[35m[39m[1m[31m [!?][0m[31m[39m[0m[39m[1m [0m[1mvia [0m[1m[34mSistema[0m[34m[39m[1m [0m[1mtook [0m[1m[33m4m 6.6s[0m[33m[39m[1m [0m[1m[39m…[0m[39m[1m[37m
-[0m[37m[39m[1m[31m➜ [0m[31m[39m[K[153C[1A[1B[153Deexit[?1l>[?2004l
-]2;exit]1;exit
-Script done on 2025-12-29 21:34:49-06:00 [COMMAND_EXIT_CODE="130"]

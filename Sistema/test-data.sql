@@ -4,10 +4,6 @@
 
 BEGIN;
 
-ABORT
-
-COMMIT
-
 -- Script de inserción de datos de ejemplo para Sistema Dental
 -- Asegúrate de ejecutar primero el script create_database.sql
 
@@ -72,22 +68,22 @@ INSERT INTO pacientes (curp, nombre, apellidos, fecha_nacimiento, edad, genero, 
 -- 5. INSERTAR CITAS
 -- ============================================
 -- Usando subqueries para obtener los IDs correctos
-INSERT INTO citas (paciente_id, doctor_id, fecha_hora, tipo, procedimiento, estado, notas, duracion_minutos) VALUES 
-((SELECT id FROM pacientes WHERE curp = 'MERA850315HDFRND09'), (SELECT id FROM usuarios WHERE email = 'juan.perez@clinica.com'), '2024-11-15 09:00:00', 'consulta', 'Consulta inicial', 'completada', 'Primera consulta, requiere limpieza', 30),
-((SELECT id FROM pacientes WHERE curp = 'MERA850315HDFRND09'), (SELECT id FROM usuarios WHERE email = 'maria.garcia@clinica.com'), '2024-11-22 10:00:00', 'limpieza', 'Limpieza dental', 'completada', 'Limpieza realizada sin complicaciones', 45),
-((SELECT id FROM pacientes WHERE curp = 'LOGM900520MDFPNR03'), (SELECT id FROM usuarios WHERE email = 'carlos.rodriguez@clinica.com'), '2024-11-18 11:00:00', 'consulta', 'Consulta inicial', 'completada', 'Evaluación general', 30),
-((SELECT id FROM pacientes WHERE curp = 'SACP780810HDFLRR08'), (SELECT id FROM usuarios WHERE email = 'juan.perez@clinica.com'), '2024-11-20 14:00:00', 'procedimiento', 'Obturación', 'completada', 'Obturación en diente 16', 60),
-((SELECT id FROM pacientes WHERE curp = 'ROJA920225MDFSMN04'), (SELECT id FROM usuarios WHERE email = 'ana.martinez@clinica.com'), '2024-11-25 09:30:00', 'consulta', 'Consulta inicial', 'completada', 'Paciente nueva, todo en orden', 30),
-((SELECT id FROM pacientes WHERE curp = 'VASL881112HDFLNR02'), (SELECT id FROM usuarios WHERE email = 'maria.garcia@clinica.com'), '2024-11-28 15:00:00', 'procedimiento', 'Extracción simple', 'completada', 'Extracción de molar 38', 45),
+INSERT INTO citas (paciente_id, doctor_id, fecha_hora, tipo, procedimiento, estado, notas, duracion_minutos, costo) VALUES 
+((SELECT id FROM pacientes WHERE curp = 'MERA850315HDFRND09'), (SELECT id FROM usuarios WHERE email = 'juan.perez@clinica.com'), '2024-11-15 09:00:00', 'consulta', 'Consulta inicial', 'completada', 'Primera consulta, requiere limpieza', 30, 500.00),
+((SELECT id FROM pacientes WHERE curp = 'MERA850315HDFRND09'), (SELECT id FROM usuarios WHERE email = 'maria.garcia@clinica.com'), '2024-11-22 10:00:00', 'limpieza', 'Limpieza dental', 'completada', 'Limpieza realizada sin complicaciones', 45, 800.00),
+((SELECT id FROM pacientes WHERE curp = 'LOGM900520MDFPNR03'), (SELECT id FROM usuarios WHERE email = 'carlos.rodriguez@clinica.com'), '2024-11-18 11:00:00', 'consulta', 'Consulta inicial', 'completada', 'Evaluación general', 30, 500.00),
+((SELECT id FROM pacientes WHERE curp = 'SACP780810HDFLRR08'), (SELECT id FROM usuarios WHERE email = 'juan.perez@clinica.com'), '2024-11-20 14:00:00', 'procedimiento', 'Obturación', 'completada', 'Obturación en diente 16', 60, 1200.00),
+((SELECT id FROM pacientes WHERE curp = 'ROJA920225MDFSMN04'), (SELECT id FROM usuarios WHERE email = 'ana.martinez@clinica.com'), '2024-11-25 09:30:00', 'consulta', 'Consulta inicial', 'completada', 'Paciente nueva, todo en orden', 30, 500.00),
+((SELECT id FROM pacientes WHERE curp = 'VASL881112HDFLNR02'), (SELECT id FROM usuarios WHERE email = 'maria.garcia@clinica.com'), '2024-11-28 15:00:00', 'procedimiento', 'Extracción simple', 'completada', 'Extracción de molar 38', 45, 1500.00),
 
-((SELECT id FROM pacientes WHERE curp = 'HEMA950430MDFRRN01'), (SELECT id FROM usuarios WHERE email = 'juan.perez@clinica.com'), '2024-12-10 10:00:00', 'consulta', 'Consulta inicial', 'programada', 'Primera visita', 30),
-((SELECT id FROM pacientes WHERE curp = 'GAPE870918HDFRRL05'), (SELECT id FROM usuarios WHERE email = 'maria.garcia@clinica.com'), '2024-12-11 11:00:00', 'limpieza', 'Limpieza dental', 'programada', 'Limpieza semestral', 45),
-((SELECT id FROM pacientes WHERE curp = 'TOMA931205MDFRRN06'), (SELECT id FROM usuarios WHERE email = 'juan.perez@clinica.com'), '2024-12-12 09:00:00', 'procedimiento', 'Ajuste ortodoncia', 'programada', 'Revisión mensual de brackets', 45),
-((SELECT id FROM pacientes WHERE curp = 'CASI800722HDFSLN07'), (SELECT id FROM usuarios WHERE email = 'carlos.rodriguez@clinica.com'), '2024-12-13 14:00:00', 'consulta', 'Consulta de seguimiento', 'programada', 'Revisar gastritis antes de procedimiento', 30),
-((SELECT id FROM pacientes WHERE curp = 'RUMA970304MDFBZR08'), (SELECT id FROM usuarios WHERE email = 'ana.martinez@clinica.com'), '2024-12-14 16:00:00', 'procedimiento', 'Endodoncia', 'programada', 'Tratamiento de conducto en diente 26', 120),
-((SELECT id FROM pacientes WHERE curp = 'LOGM900520MDFPNR03'), (SELECT id FROM usuarios WHERE email = 'maria.garcia@clinica.com'), '2024-12-16 10:00:00', 'procedimiento', 'Obturación', 'programada', 'Tratar caries en diente 14', 60),
+((SELECT id FROM pacientes WHERE curp = 'HEMA950430MDFRRN01'), (SELECT id FROM usuarios WHERE email = 'juan.perez@clinica.com'), '2024-12-10 10:00:00', 'consulta', 'Consulta inicial', 'programada', 'Primera visita', 30, 500.00),
+((SELECT id FROM pacientes WHERE curp = 'GAPE870918HDFRRL05'), (SELECT id FROM usuarios WHERE email = 'maria.garcia@clinica.com'), '2024-12-11 11:00:00', 'limpieza', 'Limpieza dental', 'programada', 'Limpieza semestral', 45, 800.00),
+((SELECT id FROM pacientes WHERE curp = 'TOMA931205MDFRRN06'), (SELECT id FROM usuarios WHERE email = 'juan.perez@clinica.com'), '2024-12-12 09:00:00', 'procedimiento', 'Ajuste ortodoncia', 'programada', 'Revisión mensual de brackets', 45, 1800.00),
+((SELECT id FROM pacientes WHERE curp = 'CASI800722HDFSLN07'), (SELECT id FROM usuarios WHERE email = 'carlos.rodriguez@clinica.com'), '2024-12-13 14:00:00', 'consulta', 'Consulta de seguimiento', 'programada', 'Revisar gastritis antes de procedimiento', 30, 500.00),
+((SELECT id FROM pacientes WHERE curp = 'RUMA970304MDFBZR08'), (SELECT id FROM usuarios WHERE email = 'ana.martinez@clinica.com'), '2024-12-14 16:00:00', 'procedimiento', 'Endodoncia', 'programada', 'Tratamiento de conducto en diente 26', 120, 3000.00),
+((SELECT id FROM pacientes WHERE curp = 'LOGM900520MDFPNR03'), (SELECT id FROM usuarios WHERE email = 'maria.garcia@clinica.com'), '2024-12-16 10:00:00', 'procedimiento', 'Obturación', 'programada', 'Tratar caries en diente 14', 60, 1200.00),
 
-((SELECT id FROM pacientes WHERE curp = 'SACP780810HDFLRR08'), (SELECT id FROM usuarios WHERE email = 'juan.perez@clinica.com'), '2024-11-30 15:00:00', 'limpieza', 'Limpieza dental', 'cancelada', 'Paciente canceló por motivos personales', 45);
+((SELECT id FROM pacientes WHERE curp = 'SACP780810HDFLRR08'), (SELECT id FROM usuarios WHERE email = 'juan.perez@clinica.com'), '2024-11-30 15:00:00', 'limpieza', 'Limpieza dental', 'cancelada', 'Paciente canceló por motivos personales', 45, 800.00);
 
 -- ============================================
 -- 6. INSERTAR PROCEDIMIENTOS DEL PACIENTE
@@ -124,11 +120,12 @@ INSERT INTO procedimientos_paciente (paciente_id, procedimiento_id, cita_id, die
   (SELECT id FROM citas WHERE paciente_id = (SELECT id FROM pacientes WHERE curp = 'ROJA920225MDFSMN04') AND fecha_hora = '2024-11-25 09:30:00'),
   NULL, 'completado', '2024-11-25', 'Primera consulta', 500.00
 ),
+-- In the procedimientos_paciente section, find these lines and change the tooth numbers:
 (
-  (SELECT id FROM pacientes WHERE curp = 'VASL881112HDFLNR02'), 
-  (SELECT id FROM procedimientos WHERE nombre = 'Extracción simple'), 
+  (SELECT id FROM pacientes WHERE curp = 'VASL881112HDFLNR02'),
+  (SELECT id FROM procedimientos WHERE nombre = 'Extracción simple'),
   (SELECT id FROM citas WHERE paciente_id = (SELECT id FROM pacientes WHERE curp = 'VASL881112HDFLNR02') AND fecha_hora = '2024-11-28 15:00:00'),
-  38, 'completado', '2024-11-28', 'Extracción de tercer molar', 1500.00
+  17, 'completado', '2024-11-28', 'Extracción de tercer molar', 1500.00  -- Changed 38 to 17
 ),
 
 (
@@ -169,9 +166,9 @@ INSERT INTO procedimientos_paciente (paciente_id, procedimiento_id, cita_id, die
 );
 
 -- ============================================
--- 7. INSERTAR ESTADOS DENTALES
+-- 7. INSERTAR ESTADOS DENTALES (CORRECTED)
 -- ============================================
-INSERT INTO estados_dentales (paciente_id, diente_numero, estado, notas) VALUES 
+INSERT INTO estados_dentales (paciente_id, diente_numero, estado, notas) VALUES
 -- Para Roberto (MERA850315HDFRND09)
 ((SELECT id FROM pacientes WHERE curp = 'MERA850315HDFRND09'), 16, 'sano', 'Buen estado general'),
 ((SELECT id FROM pacientes WHERE curp = 'MERA850315HDFRND09'), 17, 'sano', 'Buen estado general'),
@@ -181,9 +178,10 @@ INSERT INTO estados_dentales (paciente_id, diente_numero, estado, notas) VALUES
 ((SELECT id FROM pacientes WHERE curp = 'SACP780810HDFLRR08'), 15, 'cariado', 'Requiere tratamiento'),
 ((SELECT id FROM pacientes WHERE curp = 'SACP780810HDFLRR08'), 26, 'sano', 'Buen estado'),
 
-((SELECT id FROM pacientes WHERE curp = 'VASL881112HDFLNR02'), 38, 'extraido', 'Extracción reciente'),
-((SELECT id FROM pacientes WHERE curp = 'VASL881112HDFLNR02'), 37, 'sano', 'Buen estado'),
-((SELECT id FROM pacientes WHERE curp = 'VASL881112HDFLNR02'), 36, 'sano', 'Buen estado'),
+-- For VASL881112HDFLNR02 - Changing from FDI notation (38, 37, 36) to universal notation (17, 18, 19)
+((SELECT id FROM pacientes WHERE curp = 'VASL881112HDFLNR02'), 17, 'extraido', 'Extracción reciente'), -- Changed 38 to 17
+((SELECT id FROM pacientes WHERE curp = 'VASL881112HDFLNR02'), 18, 'sano', 'Buen estado'), -- Changed 37 to 18
+((SELECT id FROM pacientes WHERE curp = 'VASL881112HDFLNR02'), 19, 'sano', 'Buen estado'), -- Changed 36 to 19
 
 ((SELECT id FROM pacientes WHERE curp = 'TOMA931205MDFRRN06'), 11, 'en_tratamiento', 'Ortodoncia activa'),
 ((SELECT id FROM pacientes WHERE curp = 'TOMA931205MDFRRN06'), 12, 'en_tratamiento', 'Ortodoncia activa'),
@@ -269,3 +267,5 @@ UNION ALL
 SELECT 'Pagos registrados:', COUNT(*) FROM pagos
 UNION ALL
 SELECT 'Registros de historial médico:', COUNT(*) FROM historial_medico;
+
+COMMIT;

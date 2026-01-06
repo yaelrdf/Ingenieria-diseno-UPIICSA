@@ -60,3 +60,7 @@ Si acepta, el instalador instalará y activará el servicio.
 Después de la instalación el sistema web estará accesible en toda la red local del servidor en el puerto 8080.
 
 Para acceder al sistema ingrese a la dirección `http://ip_servidor:8080` en cualquier equipo conectado a la misma red que el servidor.
+
+El sistema por defecto tendra las credenciales:
+**Usuario:** admin
+**Contraseña:** admin123
