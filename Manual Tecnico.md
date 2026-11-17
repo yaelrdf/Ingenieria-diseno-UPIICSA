@@ -39,6 +39,9 @@ No es necesario instalar Python ni PostgreSQL en el servidor.
 
 ## Instalación
 
+> [!NOTE]
+> Si el servidor tiene instalada la versión 1.0.0 (con `Install.py`), desinstálela primero: vea [Desinstalar la versión 1.0.0](#desinstalar-la-versión-100).
+
 1. Descargue el repositorio:
 
 ```bash
@@ -79,6 +82,29 @@ docker compose ps
 ```
 
 El primer arranque tarda un poco más porque descarga las imágenes, construye la aplicación y crea la base de datos. Los contenedores se reinician solos al reiniciar el servidor (`restart: unless-stopped`), por lo que no se requiere un servicio de systemd.
+
+### Desinstalar la versión 1.0.0
+
+El script `desinstalar_v1.sh` elimina por completo la instalación anterior:
+
+- el servicio de systemd `sistema_dental`;
+- el proceso iniciado manualmente con `python Sistema/main.py`;
+- el contenedor, el volumen y la red de la base de datos antigua;
+- el entorno virtual `.venv` y los archivos de sesión.
+
+No afecta a la versión 1.1.0. Ejecútelo desde la carpeta del repositorio donde se instaló la versión anterior, después de actualizar el código con `git pull`:
+
+```bash
+./desinstalar_v1.sh
+```
+
+El script pide confirmación y ofrece respaldar la base de datos antigua en un archivo `respaldo_v1_<fecha>.sql`. Pide la contraseña de `sudo` solo si existe el servicio de systemd.
+
+Si la carpeta del repositorio cambió de nombre desde la instalación anterior, indique el nombre del proyecto Docker antiguo (se puede consultar con `docker ps -a`; es la parte antes de `-db-1`):
+
+```bash
+./desinstalar_v1.sh nombre-del-proyecto
+```
 
 ## Accediendo al sistema
 

@@ -59,6 +59,7 @@ Versión de corrección de las incidencias reportadas por el equipo evaluador en
 - Despliegue 100 % Docker: `compose.yml` con la aplicación (`Sistema/Dockerfile`), PostgreSQL 17 con *healthcheck* y Adminer opcional.
 - Esquema (`db/init/01-schema.sql`) y datos de muestra (`db/seed/datos_muestra.sql`) se cargan automáticamente al crear la base de datos. Los datos de muestra usan fechas relativas al día de instalación y se pueden desactivar con `SEED_DEMO_DATA=false`.
 - Configuración por variables de entorno (`.env.example`): credenciales, secreto de sesión y puertos.
+- Script `desinstalar_v1.sh` para eliminar por completo la instalación 1.0.0 (servicio de systemd, base de datos antigua, entorno virtual y sesiones), con respaldo opcional de la base de datos.
 - Se eliminaron `Install.py`, el servicio de systemd, `add_users_table.sql` (tenía un hash de admin incorrecto), `test-data.sql`, `create_database.sql` y `filethree.txt`.
 - `requirements.txt` reducido a las dependencias reales con versión fija (`nicegui`, `psycopg2-binary`); antes incluía `hashlib` y `logging`, que impedían la instalación.
 - El entorno virtual (`Sistema/.venv`), las cachés de Python y las sesiones de NiceGUI se retiraron del control de versiones y se agregó `.gitignore`.
