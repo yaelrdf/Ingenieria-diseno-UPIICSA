@@ -1,15 +1,59 @@
+name: sonrisa-perfecta
+
 services:
   db:
-    image: postgres:latest # You can specify a specific version like postgres:14-alpine
+    image: postgres:17-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: sistema_dental
-    ports:
-      - "5432:5432" # Maps host port 5432 to container port 5432
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-sistema_dental}
+      SEED_DEMO_DATA: ${SEED_DEMO_DATA:-true}
+      TZ: America/Mexico_City
+      PGTZ: America/Mexico_City
     volumes:
-      - db_data:/var/lib/postgresql 
+      - pgdata:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+      - ./db/seed:/seed:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  app:
+    build: ./Sistema
+    image: sonrisa-perfecta:1.1.0
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-sistema_dental}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      STORAGE_SECRET: ${STORAGE_SECRET:-cambie-este-secreto}
+      TZ: America/Mexico_City
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    volumes:
+      - sesiones:/app/.nicegui
+
+  # Gestor web de la base de datos (opcional, para auditoría del equipo de pruebas).
+  # Se inicia con: docker compose --profile tools up -d
+  adminer:
+    image: adminer:5.4.1
+    profiles: ["tools"]
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      ADMINER_DEFAULT_SERVER: db
+    ports:
+      - "127.0.0.1:${ADMINER_PORT:-8081}:8080"
 
 volumes:
-  db_data:
+  pgdata:
+  sesiones:

@@ -14,7 +14,7 @@ class PacienteSelector:
         with self.dialog, ui.card().classes('w-full'):
             ui.label(self.label).classes('text-h6 mb-2')
             self.search_input = ui.input(
-                placeholder='Nombre o teléfono...',
+                placeholder='Nombre, CURP o teléfono...',
                 on_change=self.buscar
             ).props('outlined autofocus clearable').classes('w-full mb-4')
             
@@ -27,14 +27,17 @@ class PacienteSelector:
         self.dialog.open()
         
     def buscar(self):
-        query = self.search_input.value if self.search_input else ""
+        query = (self.search_input.value or '').strip() if self.search_input else ''
         if not query:
             sql = "SELECT id, nombre || ' ' || apellidos, telefono FROM pacientes ORDER BY nombre LIMIT 10"
             params = ()
         else:
             search = f"%{query}%"
-            sql = "SELECT id, nombre || ' ' || apellidos, telefono FROM pacientes WHERE nombre ILIKE %s OR apellidos ILIKE %s OR telefono ILIKE %s ORDER BY nombre LIMIT 20"
-            params = (search, search, search)
+            sql = """SELECT id, nombre || ' ' || apellidos, telefono FROM pacientes
+                     WHERE nombre ILIKE %s OR apellidos ILIKE %s OR (nombre || ' ' || apellidos) ILIKE %s
+                        OR curp ILIKE %s OR telefono ILIKE %s
+                     ORDER BY nombre LIMIT 20"""
+            params = (search, search, search, search, search)
             
         resultados = db.fetch_all(sql, params)
         

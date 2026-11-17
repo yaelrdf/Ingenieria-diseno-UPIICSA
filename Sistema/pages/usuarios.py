@@ -1,13 +1,17 @@
-from nicegui import ui
-
-from nicegui import ui, app
-import database as db
-from models.usuario_sistema import UsuarioSistema
-from components.usuario_sistema_form import UsuarioSistemaForm
 import json
+
+from nicegui import app, ui
+
+import database as db
+import validaciones as val
+from components.confirmacion import confirmar
+from components.usuario_sistema_form import UsuarioSistemaForm
+from models.usuario_sistema import UsuarioSistema
+from pages.citas import puede_eliminar_usuario
 
 class UsuariosPage:
     def __init__(self):
+        self.puede_eliminar = puede_eliminar_usuario()
         self.usuarios_container = None
         self.create_content()
     
@@ -83,7 +87,8 @@ class UsuariosPage:
                 with ui.column().classes('items-end gap-2'):
                     with ui.row().classes('gap-2'):
                         ui.button(icon='edit', on_click=lambda: self.editar_usuario(data)).props('flat')
-                        if username != 'admin':
+                        # El admin por defecto nunca puede eliminarse; la propia cuenta se bloquea al intentarlo
+                        if self.puede_eliminar and username != 'admin':
                             ui.button(icon='delete', on_click=lambda u=u_id, name=username: self.eliminar_usuario(u, name)).props('flat color=red')
 
     def mostrar_form_nuevo(self):
@@ -101,7 +106,7 @@ class UsuariosPage:
                 self.cargar_usuarios()
                 dialog.close()
             except Exception as e:
-                ui.notify(f'Error al guardar: {str(e)}', type='negative')
+                ui.notify(f'Error al guardar: {val.mensaje_error_bd(e)}', type='negative')
         
         dialog = ui.dialog().classes('w-full max-w-md')
         with dialog:
@@ -133,7 +138,7 @@ class UsuariosPage:
                 self.cargar_usuarios()
                 dialog.close()
             except Exception as e:
-                ui.notify(f'Error al actualizar: {str(e)}', type='negative')
+                ui.notify(f'Error al actualizar: {val.mensaje_error_bd(e)}', type='negative')
 
         dialog = ui.dialog().classes('w-full max-w-md')
         with dialog:
@@ -150,20 +155,13 @@ class UsuariosPage:
              ui.notify('No puedes eliminar tu propia cuenta', type='warning')
              return
 
-        def confirmar():
+        def eliminar():
             try:
                 db.execute_query("DELETE FROM usuarios_sistema WHERE id = %s", (u_id,))
                 ui.notify('Usuario eliminado', type='positive')
                 self.cargar_usuarios()
-                dialog.close()
             except Exception as e:
-                ui.notify(f'Error: {str(e)}', type='negative')
-        
-        dialog = ui.dialog()
-        with dialog:
-            with ui.card():
-                ui.label('¿Eliminar usuario?').classes('text-h6')
-                with ui.row().classes('justify-end'):
-                    ui.button('Cancelar', on_click=dialog.close)
-                    ui.button('Eliminar', on_click=confirmar, color='red')
-        dialog.open()
+                ui.notify(f'Error: {val.mensaje_error_bd(e)}', type='negative')
+
+        confirmar('¿Eliminar usuario?', f'Se eliminará la cuenta @{username}. Esta acción no se puede deshacer.',
+                  eliminar, texto_confirmar='Eliminar', color='red')

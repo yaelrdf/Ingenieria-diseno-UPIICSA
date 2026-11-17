@@ -1,5 +1,38 @@
-from nicegui import ui, app
+import hashlib
+import json
+import logging
+from pathlib import Path
+
+from nicegui import app, ui
+
 import database as db
+from config import config
+from pages.adeudos import AdeudosPage
+from pages.citas import CitasPage
+from pages.dashboard import DashboardPage
+from pages.expedientes import ExpedientesPage
+from pages.medicos import MedicosPage
+from pages.odontograma import OdontogramaPage
+from pages.pacientes import PacientesPage
+from pages.usuarios import UsuariosPage
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(name)s: %(message)s')
+logger = logging.getLogger(__name__)
+
+BASE_DIR = Path(__file__).resolve().parent
+LOGO = str(BASE_DIR / 'logo.png')
+
+# (ruta, título, ícono)
+MENU_ITEMS = [
+    ('dashboard', 'Vista general', 'dashboard'),
+    ('citas', 'Gestion de citas', 'event'),
+    ('pacientes', 'Gestion de pacientes', 'people'),
+    ('expedientes', 'Expedientes', 'folder_shared'),
+    ('odontograma', 'Odontogramas', 'draw'),
+    ('adeudos', 'Adeudos', 'payments'),
+    ('medicos', 'Gestion de Medicos', 'medical_services'),
+    ('usuarios', 'Usuarios', 'manage_accounts'),
+]
 
 ui.add_head_html('''
     <link href="https://fonts.googleapis.com/css2?family=Spicy+Rice&display=swap" rel="stylesheet">
@@ -7,271 +40,247 @@ ui.add_head_html('''
         .q-btn { text-transform: none !important; }
     </style>
 ''', shared=True)
-from pages.dashboard import DashboardPage
-from pages.pacientes import PacientesPage
-from pages.citas import CitasPage
-from pages.expedientes import ExpedientesPage
-from pages.adeudos import AdeudosPage
-from pages.odontograma import OdontogramaPage
-from pages.medicos import MedicosPage
-from pages.usuarios import UsuariosPage
-from models.usuario_sistema import UsuarioSistema
-import logging
-import hashlib
 
-# Configurar logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+db.Database.initialize()
+app.on_shutdown(db.Database.close_all)
+
 
 def hash_password(password: str) -> str:
     return hashlib.sha256(password.encode()).hexdigest()
 
-# Inicializar base de datos
-db.Database.initialize()
 
-# Variable global para rastrear la página actual
-current_page = None
-page_container = None
+# ---------------------------------------------------------------------------
+# Sesión y permisos
+# ---------------------------------------------------------------------------
 
-def build_layout(active_route='dashboard'):
-    """Build the layout structure with drawer and content area"""
-    if not app.storage.user.get('authenticated', False):
-        ui.navigate.to('/login')
-        return
-    
-    user_data = app.storage.user.get('user', {})
-    is_superadmin = user_data.get('es_superadmin', False)
-    permisos = user_data.get('permisos', {})
+def obtener_usuario(user_id) -> dict | None:
+    """Datos de la cuenta necesarios para la sesión (nunca incluye la contraseña)."""
+    fila = db.fetch_one("""
+        SELECT id, username, nombre, puesto, es_superadmin, permisos, medico_id
+        FROM usuarios_sistema WHERE id = %s
+    """, (user_id,))
+    if not fila:
+        return None
+    permisos = fila[5]
     if isinstance(permisos, str):
-        import json
         permisos = json.loads(permisos)
-    allowed_menus = permisos.get('menus', [])
+    return {
+        'id': fila[0],
+        'username': fila[1],
+        'nombre': fila[2],
+        'puesto': fila[3],
+        'es_superadmin': bool(fila[4]),
+        'permisos': permisos or {'menus': [], 'puede_eliminar': False},
+        'medico_id': fila[6],
+    }
 
-    global page_container
-    # Configurar tema y colores para coincidir con el mockup
+
+def usuario_actual() -> dict | None:
+    """Valida la sesión y recarga los permisos desde la BD en cada página."""
+    if not app.storage.user.get('authenticated', False):
+        return None
+    user_id = (app.storage.user.get('user') or {}).get('id')
+    user = obtener_usuario(user_id) if user_id else None
+    if user is None:
+        # La cuenta fue eliminada o la sesión es inválida
+        app.storage.user.clear()
+        return None
+    app.storage.user['user'] = user
+    return user
+
+
+def menus_permitidos(user: dict) -> list[str]:
+    if user.get('es_superadmin'):
+        return [ruta for ruta, _, _ in MENU_ITEMS]
+    permitidos = (user.get('permisos') or {}).get('menus', [])
+    return [ruta for ruta, _, _ in MENU_ITEMS if ruta in permitidos]
+
+
+def cerrar_sesion():
+    app.storage.user.clear()
+    ui.navigate.to('/login')
+
+
+# ---------------------------------------------------------------------------
+# Estructura visual
+# ---------------------------------------------------------------------------
+
+def construir_layout(user: dict, ruta_activa: str):
+    """Dibuja el menú lateral y devuelve el contenedor del contenido de la página."""
     ui.colors(
         primary='#9daaf2',
-        secondary='#333333', 
+        secondary='#333333',
         accent='#5c6bc0',
         positive='#21BA45',
         negative='#C10015',
         info='#31CCEC',
         warning='#F2C037'
     )
-    
-    # Barra de navegación lateral
-    with ui.left_drawer(bordered=False).classes('bg-[#9daaf2] p-0 text-white overflow-y-auto overflow-x-hidden') as drawer:
-        # Sección del Logo
+    permitidos = menus_permitidos(user)
+
+    with ui.left_drawer(bordered=False).classes('bg-[#9daaf2] p-0 text-white overflow-y-auto overflow-x-hidden'):
         with ui.column().classes('w-full items-center py-4 gap-0'):
-            try:
-                ui.image('logo.png').classes('w-24 mb-2')
-            except:
-                ui.icon('pets', size='64px', color='white').classes('mb-2') # Fallback icon
+            ui.image(LOGO).classes('w-24 mb-2')
             ui.label('Sonrisa perfecta').classes('text-h5 font-bold text-white').style('font-family: "Spicy Rice", cursive;')
-        
-        # Perfil de usuario
-        with ui.row().classes('w-full items-center px-6 py-2 gap-4 bg-[#9daaf2]'):
-             ui.avatar('img:https://cdn.pixabay.com/photo/2017/02/23/13/05/avatar-2092113_1280.png').classes('w-12 h-12 shadow-md')
-             with ui.column().classes('gap-0 flex-grow'):
-                 ui.label(user_data.get('nombre', 'Usuario')).classes('font-bold text-white')
-                 ui.label(user_data.get('puesto', 'Puesto')).classes('text-caption text-blue-50')
-             ui.button(icon='logout', on_click=lambda: (app.storage.user.clear(), ui.navigate.to('/login')))\
-                 .props('flat round color=white size=sm').tooltip('Cerrar sesión')
-        
+
+        with ui.row().classes('w-full items-center px-6 py-2 gap-4 bg-[#9daaf2] no-wrap'):
+            ui.avatar(icon='person', color='white', text_color='primary').classes('shadow-md')
+            with ui.column().classes('gap-0 flex-grow'):
+                ui.label(user.get('nombre') or 'Usuario').classes('font-bold text-white')
+                ui.label(user.get('puesto') or '').classes('text-caption text-blue-50')
+            ui.button(icon='logout', on_click=cerrar_sesion).props('flat round color=white size=sm').tooltip('Cerrar sesión')
+
         ui.separator().classes('bg-white opacity-20 mx-6 mb-4')
 
-        menu_items = [
-            ('dashboard', 'Vista general', 'dashboard'),
-            ('citas', 'Gestion de citas', 'event'),
-            ('pacientes', 'Gestion de pacientes', 'people'),
-            ('expedientes', 'Expedientes', 'folder_shared'),
-            ('odontograma', 'Odontogramas', 'draw'),
-            ('adeudos', 'Adeudos', 'payments'),
-            ('medicos', 'Gestion de Medicos', 'medical_services'),
-            ('usuarios', 'Usuarios', 'manage_accounts')
-        ]
-        
-        for route, title, icon in menu_items:
-            if not is_superadmin and route not in allowed_menus:
+        for ruta, titulo, icono in MENU_ITEMS:
+            if ruta not in permitidos:
                 continue
-                
-            is_active = active_route == route
-            with ui.button(on_click=lambda r=route: ui.navigate.to(f'/{r}'))\
-                .props('flat color=white no-caps')\
-                .classes(f'w-full justify-start py-2 px-6 rounded-none {"bg-[#333333]" if is_active else "hover:bg-[#8c9ae5]"}'):
+            activo = ruta == ruta_activa
+            with ui.button(on_click=lambda r=ruta: ui.navigate.to(f'/{r}')) \
+                    .props('flat color=white no-caps') \
+                    .classes(f'w-full justify-start py-2 px-6 rounded-none {"bg-[#333333]" if activo else "hover:bg-[#8c9ae5]"}'):
                 with ui.row().classes('items-center gap-4'):
-                    ui.icon(icon, size='24px')
-                    ui.label(title).classes('text-lg font-medium')
-        
-        ui.space()
+                    ui.icon(icono, size='24px')
+                    ui.label(titulo).classes('text-lg font-medium')
 
-        # Pie de página
+        ui.space()
         with ui.column().classes('w-full items-center pb-4'):
-            ui.label('v1.0.0').classes('text-caption text-white opacity-60')
-    
-    # Área de contenido principal
+            ui.label(f'v{config.APP_VERSION}').classes('text-caption text-white opacity-60')
+
     with ui.column().classes('w-full bg-white min-h-screen'):
-        # Contenedor de la página actual
-        page_container = ui.column().classes('w-full p-8')
+        return ui.column().classes('w-full p-8')
+
+
+def mensaje_bloqueo(icono: str, titulo: str, detalle: str):
+    with ui.column().classes('w-full items-center mt-16 gap-2 text-grey-7'):
+        ui.icon(icono, size='64px', color='grey-5')
+        ui.label(titulo).classes('text-h5')
+        ui.label(detalle).classes('text-body1')
+
+
+def mostrar_pagina(ruta: str, crear_pagina):
+    """Punto de entrada común: exige sesión y permiso sobre el módulo antes de dibujarlo."""
+    user = usuario_actual()
+    if user is None:
+        ui.navigate.to('/login')
+        return
+    contenido = construir_layout(user, ruta)
+    with contenido:
+        if ruta in menus_permitidos(user):
+            crear_pagina()
+        else:
+            mensaje_bloqueo('lock', 'Acceso restringido',
+                            'Su cuenta no tiene permiso para acceder a este módulo.')
+
+
+# ---------------------------------------------------------------------------
+# Rutas
+# ---------------------------------------------------------------------------
 
 @ui.page('/login')
 def login_page():
-    def try_login():
-        query = "SELECT * FROM usuarios_sistema WHERE username = %s AND password = %s"
-        user_data = db.fetch_one(query, (username.value, hash_password(password.value)))
-        if user_data:
-            # Columns: id, username, password, nombre, puesto, es_superadmin, permisos, medico_id, created_at
-            columns = ['id', 'username', 'password', 'nombre', 'puesto', 'es_superadmin', 'permisos', 'medico_id', 'created_at']
-            user_dict = dict(zip(columns, user_data))
-            app.storage.user.update({
-                'authenticated': True,
-                'user': user_dict
-            })
-            ui.navigate.to('/')
-        else:
-            ui.notify('Usuario o contraseña incorrectos', color='negative')
-
-    if app.storage.user.get('authenticated', False):
+    if usuario_actual():
         ui.navigate.to('/')
         return
+
+    def try_login():
+        nombre_usuario = (username.value or '').strip()
+        clave = password.value or ''
+        if not nombre_usuario and not clave:
+            ui.notify('Ingrese usuario y contraseña', type='warning')
+            return
+        if not nombre_usuario:
+            ui.notify('El usuario es obligatorio', type='warning')
+            return
+        if not clave:
+            ui.notify('La contraseña es obligatoria', type='warning')
+            return
+
+        fila = db.fetch_one('SELECT id FROM usuarios_sistema WHERE username = %s AND password = %s',
+                            (nombre_usuario, hash_password(clave)))
+        if not fila:
+            ui.notify('Usuario o contraseña incorrectos', color='negative')
+            return
+        app.storage.user.update({'authenticated': True, 'user': obtener_usuario(fila[0])})
+        ui.navigate.to('/')
 
     with ui.column().classes('absolute-center items-center'):
         with ui.card().classes('w-80 p-8 shadow-2xl'):
             with ui.column().classes('w-full items-center mb-6'):
-                try:
-                    ui.image('logo.png').classes('w-24 mb-2')
-                except:
-                    ui.icon('pets', size='64px', color='primary').classes('mb-2')
+                ui.image(LOGO).classes('w-24 mb-2')
                 ui.label('Sonrisa perfecta').classes('text-h5 font-bold text-primary').style('font-family: "Spicy Rice", cursive;')
-            
+
             ui.label('Iniciar Sesión').classes('text-h6 text-center mb-4 text-grey-8')
             username = ui.input('Nombre de usuario').classes('w-full mb-2').on('keydown.enter', try_login)
             password = ui.input('Contraseña', password=True, password_toggle_button=True).classes('w-full mb-6').on('keydown.enter', try_login)
             ui.button('Entrar', on_click=try_login).classes('w-full py-2 text-lg rounded-lg').props('elevated color=primary')
 
+
 @ui.page('/')
 def index():
-    build_layout('dashboard')
-    render_dashboard()
+    user = usuario_actual()
+    if user is None:
+        ui.navigate.to('/login')
+        return
+    permitidos = menus_permitidos(user)
+    if 'dashboard' in permitidos:
+        mostrar_pagina('dashboard', DashboardPage)
+    elif permitidos:
+        ui.navigate.to(f'/{permitidos[0]}')
+    else:
+        with construir_layout(user, ''):
+            mensaje_bloqueo('info', 'Sin módulos asignados',
+                            'Solicite a un administrador que le asigne permisos de acceso.')
+
 
 @ui.page('/dashboard')
 def dashboard():
-    build_layout('dashboard')
-    render_dashboard()
+    mostrar_pagina('dashboard', DashboardPage)
+
 
 @ui.page('/pacientes')
 def pacientes():
-    build_layout('pacientes')
-    render_pacientes()
+    mostrar_pagina('pacientes', PacientesPage)
+
 
 @ui.page('/citas')
 def citas():
-    build_layout('citas')
-    render_citas()
+    mostrar_pagina('citas', CitasPage)
+
 
 @ui.page('/expedientes')
 def expedientes(paciente_id: int | None = None):
-    build_layout('expedientes')
-    render_expedientes(paciente_id)
+    mostrar_pagina('expedientes', lambda: ExpedientesPage(paciente_id=paciente_id))
+
 
 @ui.page('/adeudos')
 def adeudos():
-    build_layout('adeudos')
-    render_adeudos()
+    mostrar_pagina('adeudos', AdeudosPage)
+
 
 @ui.page('/odontograma')
 def odontograma():
-    build_layout('odontograma')
-    render_odontograma()
+    mostrar_pagina('odontograma', OdontogramaPage)
+
 
 @ui.page('/medicos')
 def medicos():
-    build_layout('medicos')
-    render_medicos()
+    mostrar_pagina('medicos', MedicosPage)
+
 
 @ui.page('/usuarios')
 def usuarios():
-    build_layout('usuarios')
-    render_usuarios()
+    mostrar_pagina('usuarios', UsuariosPage)
 
-def render_dashboard():
-    global current_page, page_container
-    if page_container:
-        page_container.clear()
-        with page_container:
-            current_page = DashboardPage()
 
-def render_pacientes():
-    global current_page, page_container
-    if page_container:
-        page_container.clear()
-        with page_container:
-            current_page = PacientesPage()
-
-def render_citas():
-    global current_page, page_container
-    if page_container:
-        page_container.clear()
-        with page_container:
-            current_page = CitasPage()
-
-def render_expedientes(paciente_id: int | None = None):
-    global current_page, page_container
-    if page_container:
-        page_container.clear()
-        with page_container:
-            current_page = ExpedientesPage(paciente_id=paciente_id)
-
-def render_adeudos():
-    global current_page, page_container
-    if page_container:
-        page_container.clear()
-        with page_container:
-            current_page = AdeudosPage()
-
-def render_odontograma():
-    global current_page, page_container
-    if page_container:
-        page_container.clear()
-        with page_container:
-            current_page = OdontogramaPage()
-
-def render_medicos():
-    global current_page, page_container
-    if page_container:
-        page_container.clear()
-        with page_container:
-            current_page = MedicosPage()
-
-def render_usuarios():
-    global current_page, page_container
-    if page_container:
-        page_container.clear()
-        with page_container:
-            current_page = UsuariosPage()
-
-def refresh_current_page():
-    """Recargar la página actual"""
-    global current_page
-    if current_page:
-        if hasattr(current_page, 'refresh'):
-            current_page.refresh()
-        elif hasattr(current_page, 'cargar_datos'):
-            current_page.cargar_datos()
-        else:
-            ui.notify('Recargando...', type='info')
-
-# Manejar cierre de la aplicación
-app.on_shutdown(db.Database.close_all)
-
-if __name__ in {"__main__", "__mp_main__"}:
+if __name__ in {'__main__', '__mp_main__'}:
     ui.run(
-        title="Sonrisa perfecta",
-        port=8080,
-        reload=True,
-        favicon="🐢",
+        title=config.APP_TITLE,
+        host='0.0.0.0',
+        port=config.APP_PORT,
+        reload=False,
+        favicon=LOGO,
         dark=False,
         show=False,
-        storage_secret="sonrisa_perfecta_secret_key"
+        storage_secret=config.STORAGE_SECRET,
     )
-    

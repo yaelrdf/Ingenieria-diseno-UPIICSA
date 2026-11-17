@@ -1,0 +1,16 @@
+# Entornos y caches de Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+
+# Almacenamiento de sesiones de NiceGUI
+.nicegui/
+
+# Configuración local de despliegue (contiene secretos)
+.env
+
+# IDE
+.idea/workspace.xml
+.idea/shelf/
+.vscode/

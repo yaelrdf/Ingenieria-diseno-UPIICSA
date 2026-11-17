@@ -1,41 +1,178 @@
-from nicegui import ui, app
-from datetime import datetime, date, timedelta
-import database as db
-from models.cita import Cita
-from components.cita_form import CitaForm
-from components.paciente_selector import PacienteSelector
+from nicegui import app, ui
 
-class CitasPage:
+import database as db
+import servicios_citas as sc
+import validaciones as val
+from components.cita_form import CitaForm
+from components.confirmacion import confirmar
+from components.paciente_selector import PacienteSelector
+from models.cita import Cita
+
+
+def puede_eliminar_usuario() -> bool:
+    user = app.storage.user.get('user', {})
+    permisos = user.get('permisos') if isinstance(user.get('permisos'), dict) else {}
+    return bool(user.get('es_superadmin', False) or permisos.get('puede_eliminar', False))
+
+
+SLOT_ACCIONES = '''
+    <q-td :props="props">
+        <q-btn flat round dense icon="edit" @click="$parent.$emit('edit', props.row.id)" v-if="['programada', 'en_curso'].includes(props.row.estado)">
+            <q-tooltip>Editar</q-tooltip>
+        </q-btn>
+        <q-btn flat round dense icon="cancel" color="orange" @click="$parent.$emit('cancel', props.row.id)" v-if="['programada', 'en_curso'].includes(props.row.estado)">
+            <q-tooltip>Cancelar cita</q-tooltip>
+        </q-btn>
+        <q-btn flat round dense icon="play_arrow" color="green" @click="$parent.$emit('start', props.row.id)" v-if="props.row.estado === 'programada'">
+            <q-tooltip>Iniciar cita</q-tooltip>
+        </q-btn>
+        <q-btn flat round dense icon="check" color="green" @click="$parent.$emit('complete', props.row.id)" v-if="props.row.estado === 'en_curso'">
+            <q-tooltip>Completar cita</q-tooltip>
+        </q-btn>
+        <q-btn flat round dense icon="delete" color="red" @click="$parent.$emit('delete', props.row.id)" v-if="props.row.can_delete">
+            <q-tooltip>Eliminar</q-tooltip>
+        </q-btn>
+    </q-td>
+'''
+
+SLOT_ESTADO = '''
+    <q-td :props="props">
+        <q-badge :color="props.row.estado_color" rounded class="q-px-sm q-py-xs">
+            {{ props.value.replace('_', ' ') }}
+        </q-badge>
+    </q-td>
+'''
+
+
+class AccionesCitas:
+    """Acciones de la tabla de citas, compartidas con la Vista general."""
+
+    def cargar_citas(self):
+        raise NotImplementedError
+
+    def configurar_tabla(self, tabla):
+        tabla.add_slot('body-cell-estado', SLOT_ESTADO)
+        tabla.add_slot('body-cell-acciones', SLOT_ACCIONES)
+        tabla.on('edit', lambda e: self.editar_cita(e.args))
+        tabla.on('cancel', lambda e: self.cancelar_cita(e.args))
+        tabla.on('start', lambda e: self.iniciar_cita(e.args))
+        tabla.on('complete', lambda e: self.completar_cita(e.args))
+        tabla.on('delete', lambda e: self.eliminar_cita(e.args))
+
+    def fila(self, cita_row: dict) -> dict:
+        cita_row['estado_color'] = sc.COLORES_ESTADO.get(cita_row['estado'], 'grey')
+        cita_row['tipo'] = sc.TIPOS_CITA.get(cita_row['tipo'], cita_row['tipo'])
+        cita_row['procedimiento'] = cita_row.get('procedimiento') or ''
+        cita_row['can_delete'] = self.puede_eliminar
+        return cita_row
+
+    def mostrar_form_nueva_cita(self, paciente_id=None):
+        def guardar(cita):
+            try:
+                sc.crear_cita(cita)
+                ui.notify('Cita guardada exitosamente', type='positive')
+                self.cargar_citas()
+                dialog.close()
+            except Exception as e:
+                ui.notify(f'Error al guardar cita: {val.mensaje_error_bd(e)}', type='negative')
+
+        with ui.dialog().classes('w-full max-w-2xl') as dialog:
+            CitaForm(cita=Cita(paciente_id=paciente_id) if paciente_id else None,
+                     on_save=guardar, on_cancel=dialog.close)
+        dialog.open()
+
+    def editar_cita(self, cita_id):
+        cita = sc.obtener_cita(cita_id)
+        if not cita:
+            ui.notify('Cita no encontrada', type='warning')
+            return
+        if cita.estado not in val.ESTADOS_CITA_ACTIVOS:
+            ui.notify('Solo se pueden editar citas programadas o en curso (RN11)', type='warning')
+            return
+
+        def actualizar(cita_actualizada):
+            try:
+                sc.actualizar_cita(cita_actualizada)
+                ui.notify('Cita actualizada', type='positive')
+                self.cargar_citas()
+                dialog.close()
+            except Exception as e:
+                ui.notify(f'Error al actualizar: {val.mensaje_error_bd(e)}', type='negative')
+
+        with ui.dialog().classes('w-full max-w-2xl') as dialog:
+            CitaForm(cita=cita, on_save=actualizar, on_cancel=dialog.close)
+        dialog.open()
+
+    def _cambiar_estado(self, cita_id, estado, mensaje_ok):
+        try:
+            if sc.cambiar_estado(cita_id, estado):
+                ui.notify(mensaje_ok, type='positive')
+            else:
+                ui.notify('La cita ya no permite este cambio de estado', type='warning')
+            self.cargar_citas()
+        except Exception as e:
+            ui.notify(f'Error: {val.mensaje_error_bd(e)}', type='negative')
+
+    def iniciar_cita(self, cita_id):
+        confirmar('¿Iniciar cita?', 'La cita cambiará a estado "en curso".',
+                  lambda: self._cambiar_estado(cita_id, 'en_curso', 'Cita iniciada'),
+                  texto_confirmar='Iniciar', color='green')
+
+    def completar_cita(self, cita_id):
+        confirmar('¿Completar cita?', 'La cita cambiará a estado "completada".',
+                  lambda: self._cambiar_estado(cita_id, 'completada', 'Cita completada'),
+                  texto_confirmar='Completar', color='green')
+
+    def cancelar_cita(self, cita_id):
+        confirmar('¿Cancelar cita?', 'La cita cambiará a estado "cancelada" y ya no podrá modificarse.',
+                  lambda: self._cambiar_estado(cita_id, 'cancelada', 'Cita cancelada'),
+                  texto_confirmar='Sí, cancelar', color='orange', texto_cancelar='No')
+
+    def eliminar_cita(self, cita_id):
+        if not self.puede_eliminar:
+            ui.notify('No tiene permiso para eliminar', type='warning')
+            return
+
+        def eliminar():
+            try:
+                sc.eliminar_cita(cita_id)
+                ui.notify('Cita eliminada', type='positive')
+                self.cargar_citas()
+            except Exception as e:
+                ui.notify(f'Error al eliminar: {val.mensaje_error_bd(e)}', type='negative')
+
+        confirmar('¿Eliminar cita permanentemente?', 'Esta acción no se puede deshacer.',
+                  eliminar, texto_confirmar='Eliminar', color='red')
+
+
+class CitasPage(AccionesCitas):
     def __init__(self):
-        user = app.storage.user.get('user', {})
-        self.puede_eliminar = user.get('es_superadmin', False) or \
-                             (user.get('permisos', {}) if isinstance(user.get('permisos'), dict) else {}).get('puede_eliminar', False)
+        self.puede_eliminar = puede_eliminar_usuario()
         self.paciente_id = None
-        self.paciente_nombre_filtro = "Ningún paciente seleccionado"
+        self.paciente_nombre_filtro = 'Ningún paciente seleccionado'
         self.create_content()
-    
+
     def create_content(self):
         ui.label('Gestión de Citas').classes('text-h4 mb-4')
-        
-        # Barra de Herramientas (Filtros y Acciones)
+
         with ui.row().classes('w-full items-center mb-4 gap-4'):
-            # Selector de paciente para filtrar
             ui.button('Seleccionar Paciente', icon='person_search', on_click=self.abrir_selector_filtro).props('outline color=primary')
-            
+
             self.paciente_filtro_display = ui.row().classes('items-center gap-2 bg-blue-50 p-2 rounded')
             with self.paciente_filtro_display:
                 ui.icon('person', color='primary')
                 self.label_paciente_filtro = ui.label(self.paciente_nombre_filtro).classes('font-bold')
                 ui.button(icon='close', on_click=self.limpiar_filtro_paciente).props('flat dense color=grey')
-            
-            self.paciente_filtro_display.set_visibility(self.paciente_id is not None)
+            self.paciente_filtro_display.set_visibility(False)
 
             ui.space()
+            ui.button('Nueva Cita', icon='add',
+                      on_click=lambda: self.mostrar_form_nueva_cita(self.paciente_id)) \
+                .props('flat color=primary')
 
-            ui.button('Nueva Cita', on_click=self.mostrar_form_nueva_cita,
-                     icon='add').props('flat color=primary')
-        
-        # Tabla de citas
+        self.mensaje_sin_paciente = ui.label('Seleccione un paciente para ver su historial de citas.') \
+            .classes('text-italic text-grey-7')
+
         columns = [
             {'name': 'id', 'label': 'ID', 'field': 'id', 'sortable': True},
             {'name': 'fecha_hora', 'label': 'Fecha y Hora', 'field': 'fecha_hora', 'sortable': True},
@@ -46,312 +183,51 @@ class CitasPage:
             {'name': 'estado', 'label': 'Estado', 'field': 'estado'},
             {'name': 'acciones', 'label': 'Acciones', 'field': 'acciones'}
         ]
-        
-        self.citas_table = ui.table(
-            columns=columns,
-            rows=[],
-            row_key='id',
-            pagination=10
-        ).classes('w-full')
-        
-        # Slots para renderizado personalizado
-        self.citas_table.add_slot('body-cell-estado', '''
-            <q-td :props="props">
-                <q-badge :color="props.row.estado_color" rounded>
-                    {{ props.value.replace('_', ' ') }}
-                </q-badge>
-            </q-td>
-        ''')
-        
-        self.citas_table.add_slot('body-cell-acciones', f'''
-            <q-td :props="props">
-                <q-btn flat round dense icon="edit" @click="$parent.$emit('edit', props.row.id)" v-if="['programada', 'en_curso'].includes(props.row.estado)"></q-btn>
-                <q-btn flat round dense icon="cancel" color="orange" @click="$parent.$emit('cancel', props.row.id)" v-if="['programada', 'en_curso'].includes(props.row.estado)"></q-btn>
-                <q-btn flat round dense icon="play_arrow" color="green" @click="$parent.$emit('start', props.row.id)" v-if="props.row.estado === 'programada'"></q-btn>
-                <q-btn flat round dense icon="check" color="green" @click="$parent.$emit('complete', props.row.id)" v-if="props.row.estado === 'en_curso'"></q-btn>
-                <q-btn flat round dense icon="delete" color="red" @click="$parent.$emit('delete', props.row.id)" v-if="props.row.can_delete"></q-btn>
-            </q-td>
-        ''')
-        
-        # Manejadores de eventos para los botones de la tabla
-        self.citas_table.on('edit', lambda e: self.editar_cita(e.args))
-        self.citas_table.on('cancel', lambda e: self.cancelar_cita(e.args))
-        self.citas_table.on('start', lambda e: self.iniciar_cita(e.args))
-        self.citas_table.on('complete', lambda e: self.completar_cita(e.args))
-        self.citas_table.on('delete', lambda e: self.eliminar_cita(e.args))
-        
+        self.citas_table = ui.table(columns=columns, rows=[], row_key='id', pagination=10).classes('w-full')
+        self.configurar_tabla(self.citas_table)
         self.cargar_citas()
-    
+
     def abrir_selector_filtro(self):
         PacienteSelector(on_select=self.aplicar_filtro_paciente).open()
-        
+
     def aplicar_filtro_paciente(self, pid, name):
         self.paciente_id = pid
-        self.paciente_nombre_filtro = name
         self.label_paciente_filtro.set_text(name)
         self.paciente_filtro_display.set_visibility(True)
         self.cargar_citas()
-        
+
     def limpiar_filtro_paciente(self):
         self.paciente_id = None
-        self.paciente_nombre_filtro = "Ningún paciente seleccionado"
         self.label_paciente_filtro.set_text(self.paciente_nombre_filtro)
         self.paciente_filtro_display.set_visibility(False)
         self.cargar_citas()
 
     def cargar_citas(self):
+        self.mensaje_sin_paciente.set_visibility(not self.paciente_id)
         if not self.paciente_id:
             self.citas_table.rows = []
             return
-            
-        paciente_id = self.paciente_id
-        
-        query = """
-        SELECT c.id, 
-               TO_CHAR(c.fecha_hora, 'DD/MM/YYYY HH24:MI') as fecha_hora,
-               p.nombre || ' ' || p.apellidos as paciente,
-               c.tipo,
-               c.procedimiento,
-               COALESCE(u.nombre, 'Sin asignar') as doctor,
-               c.estado
-        FROM citas c
-        JOIN pacientes p ON c.paciente_id = p.id
-        LEFT JOIN usuarios u ON c.doctor_id = u.id
-        """
-        
-        params = []
-        if paciente_id:
-            query += " WHERE c.paciente_id = %s"
-            params.append(paciente_id)
-        
-        query += " ORDER BY c.fecha_hora DESC"
-        
-        citas = db.fetch_all(query, params)
-        
-        rows = []
-        for cita in citas:
-            estado_color = {
-                'programada': 'blue',
-                'en_curso': 'orange',
-                'completada': 'green',
-                'cancelada': 'red'
-            }.get(cita[6], 'grey')
-            
-            rows.append({
-                'id': cita[0],
-                'fecha_hora': cita[1],
-                'paciente': cita[2],
-                'tipo': cita[3],
-                'procedimiento': cita[4],
-                'doctor': cita[5],
-                'estado': cita[6],
-                'estado_color': estado_color,
-                'can_delete': self.puede_eliminar
-            })
-        
-        self.citas_table.rows = rows
-    
-    # Estos métodos ya no son necesarios pero los mantenemos para no romper referencias si las hubiera
-    def get_estado_badge(self, estado, color):
-        return ''
-    
-    def crear_botones_accion(self, cita_id, estado):
-        return ''
-    
-    def mostrar_form_nueva_cita(self):
-        def guardar_cita(cita):
-            query = """
-            INSERT INTO citas (paciente_id, doctor_id, fecha_hora, tipo, 
-                             procedimiento, estado, notas, duracion_minutos, costo)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """
-            
-            params = (
-                cita.paciente_id, cita.doctor_id, cita.fecha_hora, cita.tipo,
-                cita.procedimiento, cita.estado, cita.notas, cita.duracion_minutos,
-                cita.costo
-            )
-            
-            try:
-                db.execute_query(query, params)
-                ui.notify('Cita guardada exitosamente', type='positive')
-                self.cargar_citas()
-                dialog.close()
-            except Exception as e:
-                ui.notify(f'Error al guardar cita: {str(e)}', type='negative')
-        
-        dialog = ui.dialog().classes('w-full max-w-2xl')
-        with dialog:
-            # Pre-seleccionar paciente si ya hay uno filtrado
-            cita_previa = Cita(paciente_id=self.paciente_id) if self.paciente_id else None
-            CitaForm(cita=cita_previa, on_save=guardar_cita, on_cancel=dialog.close)
-        dialog.open()
-    
-    def editar_cita(self, cita_id):
-        query = """
-        SELECT id, paciente_id, doctor_id, fecha_hora, tipo, 
-               procedimiento, estado, notas, duracion_minutos, costo
-        FROM citas WHERE id = %s
-        """
-        cita_data = db.fetch_one(query, (cita_id,))
-        
-        if not cita_data:
-            ui.notify('Cita no encontrada', type='warning')
-            return
-        
-        cita = Cita(
-            id=cita_data[0],
-            paciente_id=cita_data[1],
-            doctor_id=cita_data[2],
-            fecha_hora=cita_data[3],
-            tipo=cita_data[4],
-            procedimiento=cita_data[5],
-            estado=cita_data[6],
-            notas=cita_data[7],
-            duracion_minutos=cita_data[8],
-            costo=cita_data[9]
-        )
-        
-        def actualizar_cita(cita_actualizada):
-            query = """
-            UPDATE citas SET paciente_id = %s, doctor_id = %s, fecha_hora = %s,
-                          tipo = %s, procedimiento = %s, estado = %s,
-                          notas = %s, duracion_minutos = %s, costo = %s
-            WHERE id = %s
-            """
-            
-            params = (
-                cita_actualizada.paciente_id, cita_actualizada.doctor_id,
-                cita_actualizada.fecha_hora, cita_actualizada.tipo,
-                cita_actualizada.procedimiento, cita_actualizada.estado,
-                cita_actualizada.notas, cita_actualizada.duracion_minutos,
-                cita_actualizada.costo,
-                cita_id
-            )
-            
-            try:
-                db.execute_query(query, params)
-                
-                # Sincronizar con procedimientos_paciente if completada
-                if cita_actualizada.estado == 'completada' and float(cita_actualizada.costo or 0) > 0:
-                    # Verificar si ya existe un registro para esta cita
-                    existe = db.fetch_one("SELECT id FROM procedimientos_paciente WHERE cita_id = %s", (cita_id,))
-                    if not existe:
-                        db.execute_query("""
-                            INSERT INTO procedimientos_paciente (paciente_id, cita_id, costo, estado, fecha_realizacion, notas)
-                            VALUES (%s, %s, %s, 'completado', %s, %s)
-                        """, (cita_actualizada.paciente_id, cita_id, cita_actualizada.costo, cita_actualizada.fecha_hora.date(), f"{cita_actualizada.tipo.upper()}: {cita_actualizada.procedimiento}"))
-                    else:
-                        db.execute_query("""
-                            UPDATE procedimientos_paciente SET costo = %s, fecha_realizacion = %s, notas = %s, estado = 'completado', paciente_id = %s
-                            WHERE cita_id = %s
-                        """, (cita_actualizada.costo, cita_actualizada.fecha_hora.date(), f"{cita_actualizada.tipo.upper()}: {cita_actualizada.procedimiento}", cita_actualizada.paciente_id, cita_id))
 
-                ui.notify('Cita actualizada', type='positive')
-                self.cargar_citas()
-                dialog.close()
-            except Exception as e:
-                ui.notify(f'Error al actualizar: {str(e)}', type='negative')
-        
-        dialog = ui.dialog().classes('w-full max-w-2xl')
-        with dialog:
-            CitaForm(cita=cita, on_save=actualizar_cita, on_cancel=dialog.close)
-        dialog.open()
-    
-    def iniciar_cita(self, cita_id):
-        def confirmar_inicio():
-            try:
-                db.execute_query("UPDATE citas SET estado = 'en_curso' WHERE id = %s", (cita_id,))
-                ui.notify('Cita iniciada', type='positive')
-                self.cargar_citas()
-                dialog.close()
-            except Exception as e:
-                ui.notify(f'Error: {str(e)}', type='negative')
-        
-        dialog = ui.dialog()
-        with dialog:
-            with ui.card():
-                ui.label('¿Iniciar cita?').classes('text-h6')
-                ui.label('La cita cambiará a estado "en curso".')
-                with ui.row().classes('justify-end'):
-                    ui.button('Cancelar', on_click=dialog.close)
-                    ui.button('Iniciar', on_click=confirmar_inicio, color='green')
-        dialog.open()
-    
-    def completar_cita(self, cita_id):
-        def confirmar_completar():
-            try:
-                db.execute_query("UPDATE citas SET estado = 'completada' WHERE id = %s", (cita_id,))
-                
-                # Crear registro en procedimientos_paciente si tiene costo
-                cita_data = db.fetch_one("SELECT paciente_id, costo, tipo, procedimiento, fecha_hora FROM citas WHERE id = %s", (cita_id,))
-                if cita_data and float(cita_data[1] or 0) > 0:
-                    paciente_id, costo, tipo, desc, fecha_hora = cita_data
-                    # Verificar si ya existe un registro para esta cita
-                    existe = db.fetch_one("SELECT id FROM procedimientos_paciente WHERE cita_id = %s", (cita_id,))
-                    if not existe:
-                        db.execute_query("""
-                            INSERT INTO procedimientos_paciente (paciente_id, cita_id, costo, estado, fecha_realizacion, notas)
-                            VALUES (%s, %s, %s, 'completado', %s, %s)
-                        """, (paciente_id, cita_id, costo, fecha_hora.date(), f"{tipo.upper()}: {desc}"))
-                    else:
-                        db.execute_query("""
-                            UPDATE procedimientos_paciente SET costo = %s, fecha_realizacion = %s, notas = %s, estado = 'completado'
-                            WHERE cita_id = %s
-                        """, (costo, fecha_hora.date(), f"{tipo.upper()}: {desc}", cita_id))
+        citas = db.fetch_all("""
+            SELECT c.id,
+                   TO_CHAR(c.fecha_hora, 'DD/MM/YYYY HH24:MI'),
+                   p.nombre || ' ' || p.apellidos,
+                   c.tipo,
+                   c.procedimiento,
+                   COALESCE(u.nombre || CASE WHEN u.activo THEN '' ELSE ' (inactivo)' END, 'Sin asignar'),
+                   c.estado
+            FROM citas c
+            JOIN pacientes p ON c.paciente_id = p.id
+            LEFT JOIN usuarios u ON c.doctor_id = u.id
+            WHERE c.paciente_id = %s
+            ORDER BY c.fecha_hora DESC
+        """, (self.paciente_id,))
 
-                ui.notify('Cita completada', type='positive')
-                self.cargar_citas()
-                dialog.close()
-            except Exception as e:
-                ui.notify(f'Error: {str(e)}', type='negative')
-        
-        dialog = ui.dialog()
-        with dialog:
-            with ui.card():
-                ui.label('¿Completar cita?').classes('text-h6')
-                ui.label('La cita cambiará a estado "completada".')
-                with ui.row().classes('justify-end'):
-                    ui.button('Cancelar', on_click=dialog.close)
-                    ui.button('Completar', on_click=confirmar_completar, color='green')
-        dialog.open()
-    
-    def cancelar_cita(self, cita_id):
-        def confirmar_cancelar():
-            try:
-                db.execute_query("UPDATE citas SET estado = 'cancelada' WHERE id = %s", (cita_id,))
-                ui.notify('Cita cancelada', type='positive')
-                self.cargar_citas()
-                dialog.close()
-            except Exception as e:
-                ui.notify(f'Error: {str(e)}', type='negative')
-        
-        dialog = ui.dialog()
-        with dialog:
-            with ui.card():
-                ui.label('¿Cancelar cita?').classes('text-h6')
-                ui.label('La cita cambiará a estado "cancelada".')
-                with ui.row().classes('justify-end'):
-                    ui.button('No', on_click=dialog.close)
-                    ui.button('Sí, cancelar', on_click=confirmar_cancelar, color='orange')
-        dialog.open()
-    
-    def eliminar_cita(self, cita_id):
-        def confirmar_eliminar():
-            try:
-                db.execute_query("DELETE FROM citas WHERE id = %s", (cita_id,))
-                ui.notify('Cita eliminada', type='positive')
-                self.cargar_citas()
-                dialog.close()
-            except Exception as e:
-                ui.notify(f'Error al eliminar: {str(e)}', type='negative')
-        
-        dialog = ui.dialog()
-        with dialog:
-            with ui.card():
-                ui.label('¿Eliminar cita permanentemente?').classes('text-h6')
-                ui.label('Esta acción no se puede deshacer.')
-                with ui.row().classes('justify-end'):
-                    ui.button('Cancelar', on_click=dialog.close)
-                    ui.button('Eliminar', on_click=confirmar_eliminar, color='red')
-        dialog.open()
+        self.citas_table.rows = [
+            self.fila({'id': c[0], 'fecha_hora': c[1], 'paciente': c[2], 'tipo': c[3],
+                       'procedimiento': c[4], 'doctor': c[5], 'estado': c[6]})
+            for c in citas
+        ]
+
+    def refresh(self):
+        self.cargar_citas()

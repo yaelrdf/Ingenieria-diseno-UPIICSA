@@ -27,10 +27,10 @@ class UsuarioSistemaForm:
                 
                 self.password = ui.input('Contraseña', password=True, password_toggle_button=True).props('outlined').classes('w-full')
                 if self.usuario.id:
-                    self.password.placeholder = "Dejar en blanco para no cambiar"
+                    self.password.props('placeholder="Dejar en blanco para no cambiar"')
                 
                 self.nombre = ui.input('Nombre Real', value=self.usuario.nombre).props('outlined').classes('w-full')
-                self.puesto = ui.input('Puesto/Cargo', value=self.usuario.puesto).props('outlined').classes('w-full')
+                self.puesto = ui.input('Puesto/Cargo', value=self.usuario.puesto or '').props('outlined').classes('w-full')
                 
                 self.medico_id = ui.select(medicos_options, label='Vincular con Médico', value=self.usuario.medico_id).props('outlined').classes('w-full')
                 
@@ -66,7 +66,9 @@ class UsuarioSistemaForm:
                 ui.button('Guardar', on_click=self.save, icon='save').props('flat color=primary')
 
     def save(self):
-        if not self.username.value or not self.nombre.value:
+        username = (self.username.value or '').strip()
+        nombre = (self.nombre.value or '').strip()
+        if not username or not nombre:
             ui.notify('Nombre de usuario y nombre real son obligatorios', type='warning')
             return
         
@@ -79,18 +81,18 @@ class UsuarioSistemaForm:
             'puede_eliminar': self.puede_eliminar.value
         }
 
-        # Validar si el username ya existe (si es nuevo)
-        if not self.usuario.id:
-            existe = db.fetch_one("SELECT id FROM usuarios_sistema WHERE username = %s", (self.username.value,))
-            if existe:
-                ui.notify('El nombre de usuario ya existe', type='negative')
-                return
+        # Validar que el username no pertenezca a otra cuenta (alta y edición)
+        existe = db.fetch_one("SELECT id FROM usuarios_sistema WHERE username = %s AND id <> %s",
+                              (username, self.usuario.id or 0))
+        if existe:
+            ui.notify('El nombre de usuario ya existe', type='negative')
+            return
 
         usuario_dict = {
             'id': self.usuario.id,
-            'username': self.username.value,
-            'nombre': self.nombre.value,
-            'puesto': self.puesto.value,
+            'username': username,
+            'nombre': nombre,
+            'puesto': (self.puesto.value or '').strip() or None,
             'es_superadmin': self.es_superadmin.value,
             'permisos': permisos,
             'medico_id': self.medico_id.value

@@ -1,8 +1,9 @@
 from nicegui import ui
+
 import database as db
-from models.paciente import Paciente
-from models.procedimiento import ProcedimientoPaciente
+import validaciones as val
 from components.paciente_selector import PacienteSelector
+from pages.adeudos import NOMBRE_PROCEDIMIENTO
 
 class ExpedientesPage:
     def __init__(self, paciente_id=None):
@@ -14,8 +15,8 @@ class ExpedientesPage:
             try:
                 self.paciente_id = int(self.paciente_id)
                 self.cargar_nombre_paciente()
-            except Exception:
-                pass
+            except (ValueError, TypeError):
+                self.paciente_id = None
             self.cargar_expediente()
     
     def cargar_nombre_paciente(self):
@@ -25,6 +26,8 @@ class ExpedientesPage:
             self.paciente_nombre = res[0]
             self.label_paciente.set_text(self.paciente_nombre)
             self.paciente_display.set_visibility(True)
+        else:
+            self.paciente_id = None
 
     def create_content(self):
         ui.label('Expedientes Clínicos').classes('text-h4 mb-4')
@@ -100,8 +103,10 @@ class ExpedientesPage:
         paciente_data = db.fetch_one(query, (self.paciente_id,))
         
         if not paciente_data:
+            self.mostrar_vacio()
             return
-        
+
+        edad = val.calcular_edad(paciente_data[3])
         self.info_general.clear()
         
         with self.info_general:
@@ -112,14 +117,14 @@ class ExpedientesPage:
                     # Columna izquierda
                     ui.label(f"Nombre: {paciente_data[1]} {paciente_data[2]}")
                     ui.label(f"CURP: {paciente_data[0]}")
-                    ui.label(f"Fecha de Nacimiento: {paciente_data[3]}")
-                    ui.label(f"Edad: {paciente_data[4]} años")
-                    ui.label(f"Género: {paciente_data[5]}")
-                    
+                    ui.label(f"Fecha de Nacimiento: {paciente_data[3].strftime('%d/%m/%Y')}")
+                    ui.label(f"Edad: {edad} años")
+                    ui.label(f"Género: {val.mostrar(paciente_data[5])}")
+
                     # Columna derecha
-                    ui.label(f"Teléfono: {paciente_data[6]}")
-                    ui.label(f"Email: {paciente_data[7]}")
-                    ui.label(f"Dirección: {paciente_data[8]}")
+                    ui.label(f"Teléfono: {val.mostrar(paciente_data[6])}")
+                    ui.label(f"Email: {val.mostrar(paciente_data[7])}")
+                    ui.label(f"Dirección: {val.mostrar(paciente_data[8])}")
                     ui.label(f"Fecha de Registro: {paciente_data[13].strftime('%d/%m/%Y')}")
             
             # Información médica
@@ -137,13 +142,17 @@ class ExpedientesPage:
                 if paciente_data[11]:  # Medicamentos
                     with ui.expansion('Medicamentos Actuales', icon='medication').classes('w-full'):
                         ui.markdown(paciente_data[11]).classes('text-body2')
+
+                if not any(paciente_data[9:12]):
+                    ui.label('Sin alergias, enfermedades crónicas ni medicamentos registrados').classes('text-italic')
     
     def cargar_procedimientos(self):
-        query = """
-        SELECT pp.id, pr.nombre, pp.estado, pp.fecha_realizacion, 
+        query = f"""
+        SELECT pp.id, {NOMBRE_PROCEDIMIENTO}, pp.estado, pp.fecha_realizacion,
                pp.costo, pp.notas, pp.diente_numero
         FROM procedimientos_paciente pp
         LEFT JOIN procedimientos pr ON pp.procedimiento_id = pr.id
+        LEFT JOIN citas c ON pp.cita_id = c.id
         WHERE pp.paciente_id = %s
         ORDER BY pp.fecha_realizacion DESC NULLS LAST, pp.created_at DESC
         """
@@ -173,7 +182,7 @@ class ExpedientesPage:
                     
                     with ui.row().classes('w-full gap-4'):
                         if proc[3]:
-                            ui.label(f"Fecha: {proc[3]}")
+                            ui.label(f"Fecha: {proc[3].strftime('%d/%m/%Y')}")
                         if proc[6]:
                             ui.label(f"Diente: {proc[6]}")
                         ui.label(f"Costo: ${proc[4]:,.2f}")
@@ -210,7 +219,7 @@ class ExpedientesPage:
     def guardar_observacion(self):
         nueva_obs = self.obs_input.value
         
-        query = "UPDATE pacientes SET observaciones = %s WHERE id = %s"
+        query = "UPDATE pacientes SET observaciones = %s, updated_at = CURRENT_TIMESTAMP WHERE id = %s"
         
         try:
             db.execute_query(query, (nueva_obs, self.paciente_id))
